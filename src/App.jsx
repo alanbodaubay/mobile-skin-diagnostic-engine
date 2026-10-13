@@ -14,7 +14,7 @@ function App() {
   const faceMeshRef = useRef(null);
 
   useEffect(() => {
-    // Initialize FaceMesh
+    // FaceMesh
     const FaceMesh = window.FaceMesh;
     if (!FaceMesh) {
       console.error("FaceMesh not loaded");
@@ -59,7 +59,7 @@ function App() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = '#00FF00';
-    // Draw tiny dots for each landmark
+    // tiny dots 
     landmarks.forEach((point) => {
       const x = point.x * canvas.width;
       const y = point.y * canvas.height;
@@ -73,17 +73,17 @@ function App() {
     const img = imageRef.current;
     if (!img) return;
 
-    // Use natural dimensions to get actual pixels from the original image
+    // get pixels from the image
     const nw = img.naturalWidth;
     const nh = img.naturalHeight;
 
-    // Helper to crop a region around a specific landmark point
-    const cropPoint = (pointIndex, boxSize, label) => {
+    // crop a region and return both preview image + raw pixel data
+    const cropPoint = (pointIndex, boxSize) => {
       const pt = landmarks[pointIndex];
       const cx = pt.x * nw;
       const cy = pt.y * nh;
       
-      const size = boxSize; // width and height of the crop box in actual pixels
+      const size = boxSize;
       const sx = Math.max(0, cx - size / 2);
       const sy = Math.max(0, cy - size / 2);
       
@@ -93,49 +93,167 @@ function App() {
       const ctx = tempCanvas.getContext('2d');
       ctx.drawImage(img, sx, sy, size, size, 0, 0, size, size);
       
-      return tempCanvas.toDataURL('image/jpeg');
+      const imageData = ctx.getImageData(0, 0, size, size);
+      return {
+        src: tempCanvas.toDataURL('image/jpeg'),
+        pixels: imageData.data, // raw RGBA pixel array
+        width: size,
+        height: size,
+      };
     };
 
-    // Typical bounding box size for ROI (e.g., 15% of the actual image width)
     const boxSize = Math.floor(nw * 0.15); 
 
     const newRois = {
-      Forehead: cropPoint(151, boxSize, 'Forehead'),
-      LeftCheek: cropPoint(205, boxSize, 'LeftCheek'),
-      RightCheek: cropPoint(425, boxSize, 'RightCheek'),
-      Chin: cropPoint(152, boxSize, 'Chin'),
+      Forehead: cropPoint(151, boxSize),
+      LeftCheek: cropPoint(205, boxSize),
+      RightCheek: cropPoint(425, boxSize),
+      Chin: cropPoint(152, boxSize),
     };
 
-    setRois(newRois);
+    // Preview images
+    setRois({
+      Forehead: newRois.Forehead.src,
+      LeftCheek: newRois.LeftCheek.src,
+      RightCheek: newRois.RightCheek.src,
+      Chin: newRois.Chin.src,
+    });
 
-    // MOCK AI ANALYSIS: Generate dummy scores for the MVP presentation
-    const mockScores = {
-      Redness: Math.floor(Math.random() * 100),
-      Oiliness: Math.floor(Math.random() * 100),
-      Texture: Math.floor(Math.random() * 100), // higher = more uneven
+
+    // Image proccessing
+    // Collect all pixel arrays from all regions
+    const allRegions = [newRois.Forehead, newRois.LeftCheek, newRois.RightCheek, newRois.Chin];
+
+    // Correct lightning conditions
+    const normalizePixels = (regions) => {
+      let totalR = 0, totalG = 0, totalB = 0, count = 0;
+      for (const region of regions) {
+        const px = region.pixels;
+        for (let i = 0; i < px.length; i += 4) {
+          totalR += px[i];
+          totalG += px[i + 1];
+          totalB += px[i + 2];
+          count++;
+        }
+      }
+      const avgR = totalR / count;
+      const avgG = totalG / count;
+      const avgB = totalB / count;
+      
+      const avgGray = (avgR + avgG + avgB) / 3;
+
+      // Scaling factors to neutralize the color cast
+      const scaleR = avgGray / (avgR || 1);
+      const scaleG = avgGray / (avgG || 1);
+      const scaleB = avgGray / (avgB || 1);
+
+      // Apply the correction to a new copy of the pixel data
+      return regions.map(region => {
+        const newPixels = new Uint8ClampedArray(region.pixels);
+        for (let i = 0; i < newPixels.length; i += 4) {
+          newPixels[i] = Math.min(255, newPixels[i] * scaleR);
+          newPixels[i+1] = Math.min(255, newPixels[i+1] * scaleG);
+          newPixels[i+2] = Math.min(255, newPixels[i+2] * scaleB);
+        }
+        return { ...region, pixels: newPixels };
+      });
     };
-    setScores(mockScores);
 
-    // MOCK RECOMMENDATION ENGINE: Basic rules engine mapping scores to FOREO products
-    if (mockScores.Redness > 70) {
+    const normalizedRegions = normalizePixels(allRegions);
+
+    // Redness
+    // Measures how dominant the red channel is relative to green and blue.
+    // In skin, elevated redness indicates inflammation, irritation, or acne.
+    const calcRedness = (regions) => {
+      let totalR = 0, totalG = 0, totalB = 0, count = 0;
+      for (const region of regions) {
+        const px = region.pixels;
+        for (let i = 0; i < px.length; i += 4) {
+          totalR += px[i];
+          totalG += px[i + 1];
+          totalB += px[i + 2];
+          count++;
+        }
+      }
+      const avgR = totalR / count;
+      const avgG = totalG / count;
+      const avgB = totalB / count;
+      // How much more R vs G+B
+      // Neutral skin = 0.38-0.42, inflamed skin > 0.42
+      const redRatio = avgR / (avgR + avgG + avgB);
+      // Map 0.33 (neutral) to 0% and 0.50+ to 100%
+      const score = Math.min(100, Math.max(0, Math.round(((redRatio - 0.33) / 0.17) * 100)));
+      return score;
+    };
+
+    // Oiliness
+    // Oily skin reflects light, creating pixels with high brightness (luminance)
+    const calcOiliness = (regions) => {
+      let shinyPixels = 0, totalPixels = 0;
+      const SHINE_THRESHOLD = 180; // luminance value indicating specular highlight
+      for (const region of regions) {
+        const px = region.pixels;
+        for (let i = 0; i < px.length; i += 4) {
+          // Standard luminance formula (ITU-R BT.601)
+          const luminance = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+          if (luminance > SHINE_THRESHOLD) shinyPixels++;
+          totalPixels++;
+        }
+      }
+      // Shiny pixels
+      const rawPercent = (shinyPixels / totalPixels) * 100;
+      const score = Math.min(100, Math.max(0, Math.round(rawPercent * 5)));
+      return score;
+    };
+
+    // Texture
+    // Measures pixel-to-pixel variance using grayscale standard deviation.
+    // Smooth skin has low variance (uniform color). Rough/textured skin (acne scars, pores, bumps) creates high local contrast = high variance.
+    const calcTexture = (regions) => {
+      let allLuminances = [];
+      for (const region of regions) {
+        const px = region.pixels;
+        for (let i = 0; i < px.length; i += 4) {
+          const luminance = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+          allLuminances.push(luminance);
+        }
+      }
+      // Calculate standard deviation of luminance
+      const mean = allLuminances.reduce((a, b) => a + b, 0) / allLuminances.length;
+      const variance = allLuminances.reduce((sum, val) => sum + (val - mean) ** 2, 0) / allLuminances.length;
+      const stdDev = Math.sqrt(variance);
+      // Map stdDev: 0-50 range to 0-100 score (higher = rougher texture)
+      const score = Math.min(100, Math.max(0, Math.round((stdDev / 50) * 100)));
+      return score;
+    };
+
+    const realScores = {
+      Redness: calcRedness(normalizedRegions),
+      Oiliness: calcOiliness(normalizedRegions),
+      Texture: calcTexture(normalizedRegions),
+    };
+    setScores(realScores);
+
+    // Recommendations
+    if (realScores.Redness > 60) {
       setRecommendation({ 
         device: "FOREO ESPADA", 
-        reason: `Your redness score is high (${mockScores.Redness}%). ESPADA's blue LED light therapy is perfect for targeting blemishes and calming inflammation.`
+        reason: `Your redness score is elevated (${realScores.Redness}%). ESPADA's blue LED light therapy is designed to target blemishes and calm skin inflammation.`
       });
-    } else if (mockScores.Oiliness > 60) {
+    } else if (realScores.Oiliness > 50) {
       setRecommendation({ 
         device: "FOREO LUNA 4", 
-        reason: `Your oiliness score is elevated (${mockScores.Oiliness}%). LUNA's T-Sonic pulsations will help deeply cleanse pores and remove excess sebum.`
+        reason: `Your oiliness score is high (${realScores.Oiliness}%). LUNA's T-Sonic pulsations will help deeply cleanse pores and control excess sebum production.`
       });
-    } else if (mockScores.Texture > 60) {
+    } else if (realScores.Texture > 50) {
       setRecommendation({ 
         device: "FOREO UFO 3", 
-        reason: `We detected uneven texture (${mockScores.Texture}%). UFO's deeply hydrating mask treatment will smooth and nourish your skin.`
+        reason: `We detected uneven skin texture (${realScores.Texture}%). UFO's deeply hydrating mask treatment will help smooth and nourish your skin.`
       });
     } else {
       setRecommendation({ 
         device: "FOREO BEAR", 
-        reason: `Your skin looks generally healthy! BEAR's microcurrent toning will help maintain your natural glow and facial firmness.`
+        reason: `Your skin metrics look healthy! BEAR's microcurrent facial toning will help maintain your natural glow and facial firmness.`
       });
     }
   };
