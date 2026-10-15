@@ -1,23 +1,37 @@
-import { useState, useRef, useEffect } from 'react';
-import { Button, Container, Typography, Box, Paper, CircularProgress } from '@mui/material';
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  Button, Container, Typography, Box, Paper, CircularProgress, Alert, Chip, Snackbar 
+} from '@mui/material';
+import Header from './components/Header';
+import RecommendationCard from './components/RecommendationCard';
+import HistoryDashboard from './components/HistoryDashboard';
+import CatalogView from './components/CatalogView';
+import { runSkinDiagnostics } from './services/aiModelService';
+import { getForeoRecommendation } from './services/foreoCatalog';
+import { saveScanRecord } from './services/historyStorage';
 
 function App() {
+  const [currentTab, setCurrentTab] = useState('scan');
   const [imageSrc, setImageSrc] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [resultsMessage, setResultsMessage] = useState("");
+  const [resultsMessage, setResultsMessage] = useState('');
   const [rois, setRois] = useState({});
-  const [scores, setScores] = useState(null);
+  const [aiResults, setAiResults] = useState(null);
   const [recommendation, setRecommendation] = useState(null);
-  
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMsg, setSnackbarMsg] = useState('');
+
   const imageRef = useRef(null);
   const canvasRef = useRef(null);
   const faceMeshRef = useRef(null);
+  const processHandlerRef = useRef(null);
+  const drawHandlerRef = useRef(null);
 
+  // Initialize MediaPipe FaceMesh
   useEffect(() => {
-    // FaceMesh
     const FaceMesh = window.FaceMesh;
     if (!FaceMesh) {
-      console.error("FaceMesh not loaded");
+      console.error('MediaPipe FaceMesh not loaded from CDN');
       return;
     }
     const faceMesh = new FaceMesh({
@@ -31,16 +45,20 @@ function App() {
       minTrackingConfidence: 0.5
     });
 
-    faceMesh.onResults((results) => {
-      setIsAnalyzing(false);
+    faceMesh.onResults(async (results) => {
       if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-        setResultsMessage("Face detected successfully! Landmarks mapped & regions cropped.");
-        drawLandmarks(results.multiFaceLandmarks[0]);
-        extractROIs(results.multiFaceLandmarks[0]);
+        setResultsMessage('Face detected! Running 100% on-device TensorFlow.js inference...');
+        if (drawHandlerRef.current) {
+          drawHandlerRef.current(results.multiFaceLandmarks[0]);
+        }
+        if (processHandlerRef.current) {
+          await processHandlerRef.current(results.multiFaceLandmarks[0]);
+        }
       } else {
-        setResultsMessage("No face detected in the image. Please try another photo.");
+        setIsAnalyzing(false);
+        setResultsMessage('No face detected in the image. Please use a clear, front-facing photo.');
         setRois({});
-        setScores(null);
+        setAiResults(null);
         setRecommendation(null);
       }
     });
@@ -59,33 +77,38 @@ function App() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = '#00FF00';
-    // tiny dots 
     landmarks.forEach((point) => {
       const x = point.x * canvas.width;
       const y = point.y * canvas.height;
       ctx.beginPath();
-      ctx.arc(x, y, 1.5, 0, 2 * Math.PI);
+      ctx.arc(x, y, 1.4, 0, 2 * Math.PI);
       ctx.fill();
     });
   };
 
-  const extractROIs = (landmarks) => {
+  /**
+   * Crops 4 key anatomical skin regions (Forehead, Left Cheek, Right Cheek, Chin)
+   * and runs Gray World auto white-balance normalization before AI feature extraction.
+   */
+  const processAndDiagnose = async (landmarks) => {
     const img = imageRef.current;
-    if (!img) return;
+    if (!img) {
+      setIsAnalyzing(false);
+      return;
+    }
 
-    // get pixels from the image
-    const nw = img.naturalWidth;
-    const nh = img.naturalHeight;
+    const nw = img.naturalWidth || 640;
+    const nh = img.naturalHeight || 480;
+    const boxSize = Math.max(32, Math.floor(Math.min(nw, nh) * 0.15));
 
-    // crop a region and return both preview image + raw pixel data
-    const cropPoint = (pointIndex, boxSize) => {
+    const cropPoint = (pointIndex) => {
       const pt = landmarks[pointIndex];
       const cx = pt.x * nw;
       const cy = pt.y * nh;
       
-      const size = boxSize;
-      const sx = Math.max(0, cx - size / 2);
-      const sy = Math.max(0, cy - size / 2);
+      const size = Math.min(boxSize, nw, nh);
+      const sx = Math.max(0, Math.min(Math.floor(cx - size / 2), nw - size));
+      const sy = Math.max(0, Math.min(Math.floor(cy - size / 2), nh - size));
       
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = size;
@@ -96,173 +119,111 @@ function App() {
       const imageData = ctx.getImageData(0, 0, size, size);
       return {
         src: tempCanvas.toDataURL('image/jpeg'),
-        pixels: imageData.data, // raw RGBA pixel array
+        pixels: imageData.data,
         width: size,
         height: size,
       };
     };
 
-    const boxSize = Math.floor(nw * 0.15); 
-
-    const newRois = {
-      Forehead: cropPoint(151, boxSize),
-      LeftCheek: cropPoint(205, boxSize),
-      RightCheek: cropPoint(425, boxSize),
-      Chin: cropPoint(152, boxSize),
+    const rawRois = {
+      Forehead: cropPoint(151),
+      LeftCheek: cropPoint(205),
+      RightCheek: cropPoint(425),
+      Chin: cropPoint(152),
     };
 
-    // Preview images
+    // Update image previews in UI
     setRois({
-      Forehead: newRois.Forehead.src,
-      LeftCheek: newRois.LeftCheek.src,
-      RightCheek: newRois.RightCheek.src,
-      Chin: newRois.Chin.src,
+      Forehead: rawRois.Forehead.src,
+      LeftCheek: rawRois.LeftCheek.src,
+      RightCheek: rawRois.RightCheek.src,
+      Chin: rawRois.Chin.src,
     });
 
-
-    // Image proccessing
-    // Collect all pixel arrays from all regions
-    const allRegions = [newRois.Forehead, newRois.LeftCheek, newRois.RightCheek, newRois.Chin];
-
-    // Correct lightning conditions
-    const normalizePixels = (regions) => {
+    // Gray World Auto White-Balance Normalization
+    const normalizeRegion = (region) => {
       let totalR = 0, totalG = 0, totalB = 0, count = 0;
-      for (const region of regions) {
-        const px = region.pixels;
-        for (let i = 0; i < px.length; i += 4) {
-          totalR += px[i];
-          totalG += px[i + 1];
-          totalB += px[i + 2];
-          count++;
-        }
+      const px = region.pixels;
+      for (let i = 0; i < px.length; i += 4) {
+        totalR += px[i];
+        totalG += px[i + 1];
+        totalB += px[i + 2];
+        count++;
       }
-      const avgR = totalR / count;
-      const avgG = totalG / count;
-      const avgB = totalB / count;
-      
+      const avgR = totalR / (count || 1);
+      const avgG = totalG / (count || 1);
+      const avgB = totalB / (count || 1);
       const avgGray = (avgR + avgG + avgB) / 3;
 
-      // Scaling factors to neutralize the color cast
       const scaleR = avgGray / (avgR || 1);
       const scaleG = avgGray / (avgG || 1);
       const scaleB = avgGray / (avgB || 1);
 
-      // Apply the correction to a new copy of the pixel data
-      return regions.map(region => {
-        const newPixels = new Uint8ClampedArray(region.pixels);
-        for (let i = 0; i < newPixels.length; i += 4) {
-          newPixels[i] = Math.min(255, newPixels[i] * scaleR);
-          newPixels[i+1] = Math.min(255, newPixels[i+1] * scaleG);
-          newPixels[i+2] = Math.min(255, newPixels[i+2] * scaleB);
-        }
-        return { ...region, pixels: newPixels };
-      });
-    };
-
-    const normalizedRegions = normalizePixels(allRegions);
-
-    // Redness
-    // Measures how dominant the red channel is relative to green and blue.
-    // In skin, elevated redness indicates inflammation, irritation, or acne.
-    const calcRedness = (regions) => {
-      let totalR = 0, totalG = 0, totalB = 0, count = 0;
-      for (const region of regions) {
-        const px = region.pixels;
-        for (let i = 0; i < px.length; i += 4) {
-          totalR += px[i];
-          totalG += px[i + 1];
-          totalB += px[i + 2];
-          count++;
-        }
+      const newPixels = new Uint8ClampedArray(px.length);
+      for (let i = 0; i < px.length; i += 4) {
+        newPixels[i] = Math.min(255, px[i] * scaleR);
+        newPixels[i + 1] = Math.min(255, px[i + 1] * scaleG);
+        newPixels[i + 2] = Math.min(255, px[i + 2] * scaleB);
+        newPixels[i + 3] = px[i + 3];
       }
-      const avgR = totalR / count;
-      const avgG = totalG / count;
-      const avgB = totalB / count;
-      // How much more R vs G+B
-      // Neutral skin = 0.38-0.42, inflamed skin > 0.42
-      const redRatio = avgR / (avgR + avgG + avgB);
-      // Map 0.33 (neutral) to 0% and 0.50+ to 100%
-      const score = Math.min(100, Math.max(0, Math.round(((redRatio - 0.33) / 0.17) * 100)));
-      return score;
+      return { ...region, pixels: newPixels };
     };
 
-    // Oiliness
-    // Oily skin reflects light, creating pixels with high brightness (luminance)
-    const calcOiliness = (regions) => {
-      let shinyPixels = 0, totalPixels = 0;
-      const SHINE_THRESHOLD = 180; // luminance value indicating specular highlight
-      for (const region of regions) {
-        const px = region.pixels;
-        for (let i = 0; i < px.length; i += 4) {
-          // Standard luminance formula (ITU-R BT.601)
-          const luminance = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-          if (luminance > SHINE_THRESHOLD) shinyPixels++;
-          totalPixels++;
-        }
+    const normalizedRois = {
+      Forehead: normalizeRegion(rawRois.Forehead),
+      LeftCheek: normalizeRegion(rawRois.LeftCheek),
+      RightCheek: normalizeRegion(rawRois.RightCheek),
+      Chin: normalizeRegion(rawRois.Chin),
+    };
+
+    try {
+      // 1. Run On-Device TensorFlow.js ML Diagnostics
+      const results = await runSkinDiagnostics(normalizedRois);
+      setAiResults(results);
+
+      // 2. Run Offline FOREO Recommendation Engine
+      const rec = getForeoRecommendation(results.metrics, results.skinType, results.detectedConcerns);
+      setRecommendation(rec);
+
+      // 3. Auto-save scan to IndexedDB in isolated try/catch so storage never blocks UI
+      try {
+        await saveScanRecord({
+          metrics: results.metrics,
+          skinType: results.skinType,
+          recommendation: rec,
+          rois: {
+            Forehead: rawRois.Forehead.src,
+            LeftCheek: rawRois.LeftCheek.src,
+            RightCheek: rawRois.RightCheek.src,
+            Chin: rawRois.Chin.src,
+          },
+          detectedConcerns: results.detectedConcerns,
+        });
+        setSnackbarMsg('Scan successfully analyzed and saved to local history!');
+        setSnackbarOpen(true);
+      } catch (storageErr) {
+        console.warn('Storage save skipped:', storageErr);
       }
-      // Shiny pixels
-      const rawPercent = (shinyPixels / totalPixels) * 100;
-      const score = Math.min(100, Math.max(0, Math.round(rawPercent * 5)));
-      return score;
-    };
 
-    // Texture
-    // Measures pixel-to-pixel variance using grayscale standard deviation.
-    // Smooth skin has low variance (uniform color). Rough/textured skin (acne scars, pores, bumps) creates high local contrast = high variance.
-    const calcTexture = (regions) => {
-      let allLuminances = [];
-      for (const region of regions) {
-        const px = region.pixels;
-        for (let i = 0; i < px.length; i += 4) {
-          const luminance = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-          allLuminances.push(luminance);
-        }
-      }
-      // Calculate standard deviation of luminance
-      const mean = allLuminances.reduce((a, b) => a + b, 0) / allLuminances.length;
-      const variance = allLuminances.reduce((sum, val) => sum + (val - mean) ** 2, 0) / allLuminances.length;
-      const stdDev = Math.sqrt(variance);
-      // Map stdDev: 0-50 range to 0-100 score (higher = rougher texture)
-      const score = Math.min(100, Math.max(0, Math.round((stdDev / 50) * 100)));
-      return score;
-    };
-
-    const realScores = {
-      Redness: calcRedness(normalizedRegions),
-      Oiliness: calcOiliness(normalizedRegions),
-      Texture: calcTexture(normalizedRegions),
-    };
-    setScores(realScores);
-
-    // Recommendations
-    if (realScores.Redness > 60) {
-      setRecommendation({ 
-        device: "FOREO ESPADA", 
-        reason: `Your redness score is elevated (${realScores.Redness}%). ESPADA's blue LED light therapy is designed to target blemishes and calm skin inflammation.`
-      });
-    } else if (realScores.Oiliness > 50) {
-      setRecommendation({ 
-        device: "FOREO LUNA 4", 
-        reason: `Your oiliness score is high (${realScores.Oiliness}%). LUNA's T-Sonic pulsations will help deeply cleanse pores and control excess sebum production.`
-      });
-    } else if (realScores.Texture > 50) {
-      setRecommendation({ 
-        device: "FOREO UFO 3", 
-        reason: `We detected uneven skin texture (${realScores.Texture}%). UFO's deeply hydrating mask treatment will help smooth and nourish your skin.`
-      });
-    } else {
-      setRecommendation({ 
-        device: "FOREO BEAR", 
-        reason: `Your skin metrics look healthy! BEAR's microcurrent facial toning will help maintain your natural glow and facial firmness.`
-      });
+      setResultsMessage('Edge-AI Diagnosis Complete! Review your metrics and routine below.');
+    } catch (err) {
+      console.error('Diagnostic error:', err);
+      setResultsMessage(`Diagnostic error: ${err?.message || 'Error processing skin features'}`);
+    } finally {
+      setIsAnalyzing(false);
     }
   };
+
+  useEffect(() => {
+    drawHandlerRef.current = drawLandmarks;
+    processHandlerRef.current = processAndDiagnose;
+  });
 
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      setResultsMessage("");
-      setScores(null);
+      setResultsMessage('');
+      setAiResults(null);
       setRecommendation(null);
       setRois({});
       const reader = new FileReader();
@@ -277,96 +238,195 @@ function App() {
     }
   };
 
+  const handleUseSample = () => {
+    setResultsMessage('');
+    setAiResults(null);
+    setRecommendation(null);
+    setRois({});
+    setImageSrc('/sample_face.png');
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
+  };
+
   const handleAnalyze = async () => {
     if (!imageSrc || !imageRef.current || !faceMeshRef.current) return;
     setIsAnalyzing(true);
-    setResultsMessage("");
+    setResultsMessage('Detecting 468 facial landmarks with MediaPipe...');
     try {
       await faceMeshRef.current.send({ image: imageRef.current });
     } catch (err) {
       console.error(err);
-      setResultsMessage("Error analyzing image.");
+      setResultsMessage(`Analysis error: ${err?.message || 'Error analyzing image'}`);
       setIsAnalyzing(false);
     }
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 5 }}>
-      <Typography variant="h4" gutterBottom align="center">
-        FOREO Skin Diagnostics
-      </Typography>
-      
-      <Box display="flex" flexDirection="column" alignItems="center" gap={3} mt={4}>
-        <Button variant="contained" component="label" size="large">
-          Upload Photo
-          <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
-        </Button>
+    <Box sx={{ bgcolor: '#F4F5F9', minHeight: '100vh', pb: 8 }}>
+      <Header currentTab={currentTab} onTabChange={setCurrentTab} />
 
-        {imageSrc && (
-          <Paper elevation={3} sx={{ p: 2, mt: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-            <div style={{ position: 'relative' }}>
-              <img 
-                ref={imageRef} 
-                src={imageSrc} 
-                alt="Uploaded face" 
-                style={{ maxWidth: '100%', borderRadius: '8px', maxHeight: '400px', display: 'block' }} 
-              />
-              <canvas 
-                ref={canvasRef}
-                style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
-              />
-            </div>
-            
-            <Button 
-              variant="contained" 
-              color="secondary" 
-              sx={{ mt: 2 }} 
-              onClick={handleAnalyze}
-              disabled={isAnalyzing}
-            >
-              {isAnalyzing ? <CircularProgress size={24} /> : "Analyze Skin"}
-            </Button>
-
-            {resultsMessage && (
-              <Typography variant="body1" color={resultsMessage.includes('Error') || resultsMessage.includes('No face') ? 'error' : 'success.main'} sx={{ mt: 2 }}>
-                {resultsMessage}
+      <Container maxWidth="md" sx={{ mt: 3 }}>
+        {/* TAB 1: Scan & Diagnose */}
+        {currentTab === 'scan' && (
+          <Box display="flex" flexDirection="column" alignItems="center">
+            {/* Upload & Actions */}
+            <Paper elevation={1} sx={{ p: 3, width: '100%', borderRadius: 3, textAlign: 'center', mb: 3 }}>
+              <Typography variant="h5" fontWeight={800} color="#1A1A2E" gutterBottom>
+                On-Device Skin Health Diagnostic Scan
               </Typography>
-            )}
+              <Typography variant="body2" color="text.secondary" mb={3} maxWidth={520} mx="auto">
+                Powered by MediaPipe 468 Face Mesh & client-side TensorFlow.js. Your photos never leave your device.
+              </Typography>
 
-            {Object.keys(rois).length > 0 && (
-              <Box mt={3} width="100%">
-                <Typography variant="h6" gutterBottom>Regions of Interest (Ready for ML)</Typography>
-                <Box display="flex" justifyContent="space-around" flexWrap="wrap" gap={2}>
-                  {Object.entries(rois).map(([region, src]) => (
-                    <Box key={region} display="flex" flexDirection="column" alignItems="center">
-                      <img src={src} alt={region} style={{ width: 80, height: 80, borderRadius: 8, border: '2px solid #ccc' }} />
-                      <Typography variant="caption" sx={{ mt: 1 }}>{region}</Typography>
-                    </Box>
-                  ))}
+              <Box display="flex" justifyContent="center" gap={2} flexWrap="wrap">
+                <Button variant="contained" component="label" size="large" sx={{ bgcolor: '#FF1493', '&:hover': { bgcolor: '#D81B60' }, px: 3 }}>
+                  📸 Upload / Take Photo
+                  <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
+                </Button>
+                <Button variant="outlined" color="primary" size="large" onClick={handleUseSample} sx={{ px: 3 }}>
+                  👤 Try Sample Face Photo
+                </Button>
+              </Box>
+            </Paper>
+
+            {/* Viewfinder Preview */}
+            {imageSrc && (
+              <Paper elevation={3} sx={{ p: 2.5, width: '100%', borderRadius: 3, bgcolor: '#FFF', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Box sx={{ position: 'relative', maxWidth: 460, width: '100%', borderRadius: 2, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                  <img 
+                    ref={imageRef} 
+                    src={imageSrc} 
+                    alt="Facial Capture" 
+                    style={{ width: '100%', height: 'auto', display: 'block' }} 
+                  />
+                  <canvas 
+                    ref={canvasRef}
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+                  />
                 </Box>
-              </Box>
-            )}
+                
+                <Button 
+                  variant="contained" 
+                  color="secondary" 
+                  size="large"
+                  sx={{ mt: 2.5, px: 4, py: 1.2, fontWeight: 700, borderRadius: 2 }} 
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing}
+                >
+                  {isAnalyzing ? <CircularProgress size={24} color="inherit" /> : '⚡ Analyze Skin with Edge-AI'}
+                </Button>
 
-            {scores && recommendation && (
-              <Box mt={4} width="100%">
-                <Typography variant="h5" gutterBottom color="primary">AI Skin Analysis</Typography>
-                <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: '#f9f9f9' }}>
-                  <Typography variant="body1"><strong>Redness:</strong> {scores.Redness}%</Typography>
-                  <Typography variant="body1"><strong>Oiliness:</strong> {scores.Oiliness}%</Typography>
-                  <Typography variant="body1"><strong>Uneven Texture:</strong> {scores.Texture}%</Typography>
-                </Paper>
+                {resultsMessage && (
+                  <Alert 
+                    severity={resultsMessage.includes('Error') || resultsMessage.includes('No face') ? 'error' : 'success'} 
+                    sx={{ mt: 2, width: '100%', maxWidth: 460 }}
+                  >
+                    {resultsMessage}
+                  </Alert>
+                )}
 
-                <Typography variant="h5" gutterBottom color="secondary">FOREO Recommendation</Typography>
-                <Paper variant="elevation" elevation={4} sx={{ p: 3, bgcolor: '#fff0f5' }}>
-                  <Typography variant="h6" gutterBottom>{recommendation.device}</Typography>
-                  <Typography variant="body1">{recommendation.reason}</Typography>
-                </Paper>
-              </Box>
+                {/* Regions of Interest Preview */}
+                {Object.keys(rois).length > 0 && (
+                  <Box mt={3} width="100%">
+                    <Typography variant="subtitle2" fontWeight={700} color="text.secondary" gutterBottom>
+                      EXTRACTED REGIONS OF INTEREST (NORMALIZED):
+                    </Typography>
+                    <Box display="grid" gridTemplateColumns="repeat(4, 1fr)" gap={1.5}>
+                      {Object.entries(rois).map(([region, src]) => (
+                        <Box key={region} textAlign="center" p={1} sx={{ bgcolor: '#F8F9FA', borderRadius: 2, border: '1px solid #EAEAEA' }}>
+                          <img src={src} alt={region} style={{ width: '100%', maxWidth: 70, height: 'auto', aspectRatio: '1/1', borderRadius: 6, display: 'block', margin: '0 auto' }} />
+                          <Typography variant="caption" display="block" mt={0.5} fontWeight={600}>
+                            {region}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Quantitative AI Skin Scores Dashboard */}
+                {aiResults && (
+                  <Box mt={4} width="100%">
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5} flexWrap="wrap" gap={1}>
+                      <Typography variant="h5" fontWeight={800} color="#1A1A2E">
+                        On-Device Diagnostic Results
+                      </Typography>
+                      <Chip label={aiResults.skinType} color="primary" sx={{ fontWeight: 700 }} />
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" display="block" mb={2}>
+                      Engine: {aiResults.engine} • Confidence: {aiResults.confidence}%
+                    </Typography>
+
+                    {/* Metric Cards Grid */}
+                    <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(4, 1fr)' }} gap={1.5} mb={2.5}>
+                      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', borderRadius: 2, bgcolor: '#FFF5F5', borderColor: '#FFCDD2' }}>
+                        <Typography variant="caption" color="#C62828" fontWeight={700}>ERYTHEMA / REDNESS</Typography>
+                        <Typography variant="h4" fontWeight={800} color="#C62828">{aiResults.metrics.Redness}%</Typography>
+                        <Typography variant="caption" color="text.secondary">Vascular Irritation</Typography>
+                      </Paper>
+
+                      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', borderRadius: 2, bgcolor: '#F0F7FF', borderColor: '#BBDEFB' }}>
+                        <Typography variant="caption" color="#1565C0" fontWeight={700}>SEBUM / OILINESS</Typography>
+                        <Typography variant="h4" fontWeight={800} color="#1565C0">{aiResults.metrics.Oiliness}%</Typography>
+                        <Typography variant="caption" color="text.secondary">Specular Reflectance</Typography>
+                      </Paper>
+
+                      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', borderRadius: 2, bgcolor: '#FAF5FF', borderColor: '#E1BEE7' }}>
+                        <Typography variant="caption" color="#6A1B9A" fontWeight={700}>MICRO-RELIEF TEXTURE</Typography>
+                        <Typography variant="h4" fontWeight={800} color="#6A1B9A">{aiResults.metrics.Texture}%</Typography>
+                        <Typography variant="caption" color="text.secondary">Pores & Roughness</Typography>
+                      </Paper>
+
+                      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', borderRadius: 2, bgcolor: '#F1FDF5', borderColor: '#C8E6C9' }}>
+                        <Typography variant="caption" color="#2E7D32" fontWeight={700}>HEALTH INDEX</Typography>
+                        <Typography variant="h4" fontWeight={800} color="#2E7D32">{aiResults.metrics.HealthScore}%</Typography>
+                        <Typography variant="caption" color="text.secondary">Overall Barrier Balance</Typography>
+                      </Paper>
+                    </Box>
+
+                    {/* Detected Clinical Concerns */}
+                    <Box sx={{ bgcolor: '#FFFDE7', p: 2, borderRadius: 2, border: '1px solid #FFF59D', mb: 2 }}>
+                      <Typography variant="caption" color="#F57F17" fontWeight={700} display="block" mb={0.5}>
+                        DETECTED CLINICAL CONCERNS:
+                      </Typography>
+                      <Box display="flex" flexWrap="wrap" gap={1}>
+                        {aiResults.detectedConcerns.map((c, i) => (
+                          <Chip key={i} label={c} size="small" sx={{ bgcolor: '#FFF9C4', color: '#F57F17', fontWeight: 600 }} />
+                        ))}
+                      </Box>
+                    </Box>
+
+                    {/* FOREO Recommendation Card (Week 6 Deliverable) */}
+                    {recommendation && (
+                      <RecommendationCard recommendation={recommendation} />
+                    )}
+                  </Box>
+                )}
+              </Paper>
             )}
-          </Paper>
+          </Box>
         )}
-      </Box>
-    </Container>
+
+        {/* TAB 2: Progress & History (Week 7 Deliverable) */}
+        {currentTab === 'history' && (
+          <HistoryDashboard onStartNewScan={() => setCurrentTab('scan')} />
+        )}
+
+        {/* TAB 3: FOREO Device Catalog */}
+        {currentTab === 'catalog' && (
+          <CatalogView />
+        )}
+      </Container>
+
+      <Snackbar 
+        open={snackbarOpen} 
+        autoHideDuration={4000} 
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMsg}
+      />
+    </Box>
   );
 }
 

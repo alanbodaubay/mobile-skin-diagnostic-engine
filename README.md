@@ -115,15 +115,16 @@ where $Y = 0.299R + 0.587G + 0.114B$.
 
 ---
 
-## 🗺️ Roadmap
+## 🗺️ Roadmap & Milestones
 
-- [x] On-device landmark detection & ROI auto-cropping
-- [x] Lighting-resilient color normalizer
-- [x] Deterministic scoring for redness, oiliness, and texture
-- [x] Hardware product recommendation logic
-- [ ] Batch processing dashboard for multi-photo trend analysis (e.g. social media batch scans)
-- [ ] Local persistence & timeline tracking (IndexedDB)
-- [ ] Export as native mobile package via Capacitor / Progressive Web App (PWA)
+- [x] **Week 1-2**: Scope, Architecture & MediaPipe Landmarking Pipeline
+- [x] **Week 3-4**: MVP Presentation & Region of Interest (ROI) Cropping (Forehead, Cheeks, Chin)
+- [x] **Week 5**: Lighting-Resilient Color Normalizer (Gray World Assumption)
+- [x] **Week 6 (Completed)**: On-Device TensorFlow.js Edge-AI Model & Offline FOREO Recommendation Engine
+- [x] **Week 7 (Completed)**: Local IndexedDB Scan History, Longitudinal Progress Tracking & Before/After Comparison
+- [ ] **Week 8**: Version 2.0 Live Presentation & Brand Styling Refinement
+- [ ] **Week 9-10**: Edge Optimization (INT8) & Robustness Testing across Skin Tones
+- [ ] **Week 11-12**: Final Mobile Packaging (PWA / Capacitor) & Internship Handover
 
 ---
 
