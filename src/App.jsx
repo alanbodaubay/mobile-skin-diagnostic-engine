@@ -140,14 +140,23 @@ function App() {
       Chin: rawRois.Chin.src,
     });
 
-    // Gray World Auto White-Balance Normalization
-    const normalizeRegion = (region) => {
+    // Global Gray World Illuminant Estimation:
+    // Samples the ambient lighting cast from the global frame rather than isolated skin patches,
+    // neutralizing color temperature without mathematically wiping out regional erythema/redness.
+    const sampleGlobalIlluminant = () => {
+      const sampleCanvas = document.createElement('canvas');
+      const sampleSize = 64;
+      sampleCanvas.width = sampleSize;
+      sampleCanvas.height = sampleSize;
+      const sctx = sampleCanvas.getContext('2d');
+      sctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+      const imgData = sctx.getImageData(0, 0, sampleSize, sampleSize).data;
+
       let totalR = 0, totalG = 0, totalB = 0, count = 0;
-      const px = region.pixels;
-      for (let i = 0; i < px.length; i += 4) {
-        totalR += px[i];
-        totalG += px[i + 1];
-        totalB += px[i + 2];
+      for (let i = 0; i < imgData.length; i += 4) {
+        totalR += imgData[i];
+        totalG += imgData[i + 1];
+        totalB += imgData[i + 2];
         count++;
       }
       const avgR = totalR / (count || 1);
@@ -155,10 +164,17 @@ function App() {
       const avgB = totalB / (count || 1);
       const avgGray = (avgR + avgG + avgB) / 3;
 
-      const scaleR = avgGray / (avgR || 1);
-      const scaleG = avgGray / (avgG || 1);
-      const scaleB = avgGray / (avgB || 1);
+      // Bound chromatic scaling factors to [0.75, 1.35] to prevent chromatic divergence
+      const scaleR = Math.min(1.35, Math.max(0.75, avgGray / (avgR || 1)));
+      const scaleG = Math.min(1.35, Math.max(0.75, avgGray / (avgG || 1)));
+      const scaleB = Math.min(1.35, Math.max(0.75, avgGray / (avgB || 1)));
+      return { scaleR, scaleG, scaleB };
+    };
 
+    const { scaleR, scaleG, scaleB } = sampleGlobalIlluminant();
+
+    const normalizeRegion = (region) => {
+      const px = region.pixels;
       const newPixels = new Uint8ClampedArray(px.length);
       for (let i = 0; i < px.length; i += 4) {
         newPixels[i] = Math.min(255, px[i] * scaleR);
