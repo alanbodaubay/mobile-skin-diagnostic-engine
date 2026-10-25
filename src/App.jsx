@@ -6,6 +6,7 @@ import Header from './components/Header';
 import RecommendationCard from './components/RecommendationCard';
 import HistoryDashboard from './components/HistoryDashboard';
 import CatalogView from './components/CatalogView';
+import InstagramAnalysis from './components/InstagramAnalysis';
 import { runSkinDiagnostics } from './services/aiModelService';
 import { getForeoRecommendation } from './services/foreoCatalog';
 import { saveScanRecord } from './services/historyStorage';
@@ -425,12 +426,23 @@ function App() {
           </Box>
         )}
 
-        {/* TAB 2: Progress & History (Week 7 Deliverable) */}
+        {/* TAB 2: Instagram Audit (Frank & Linda Week 8 Deliverable) */}
+        {currentTab === 'instagram' && (
+          <InstagramAnalysis 
+            faceMeshRef={faceMeshRef} 
+            onScanSaved={() => {
+              setSnackbarMsg('Instagram audit progress successfully saved to history!');
+              setSnackbarOpen(true);
+            }} 
+          />
+        )}
+
+        {/* TAB 3: Progress & History (Week 7 Deliverable) */}
         {currentTab === 'history' && (
           <HistoryDashboard onStartNewScan={() => setCurrentTab('scan')} />
         )}
 
-        {/* TAB 3: FOREO Device Catalog */}
+        {/* TAB 4: FOREO Device Catalog */}
         {currentTab === 'catalog' && (
           <CatalogView />
         )}

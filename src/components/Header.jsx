@@ -56,6 +56,7 @@ export default function Header({ currentTab, onTabChange }) {
           }}
         >
           <Tab label="Scan & Diagnose" value="scan" sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab label="📸 Instagram Audit" value="instagram" sx={{ textTransform: 'none', fontWeight: 700, color: '#FF80AB' }} />
           <Tab label="Progress & History" value="history" sx={{ textTransform: 'none', fontWeight: 600 }} />
           <Tab label="FOREO Catalog" value="catalog" sx={{ textTransform: 'none', fontWeight: 600 }} />
         </Tabs>
