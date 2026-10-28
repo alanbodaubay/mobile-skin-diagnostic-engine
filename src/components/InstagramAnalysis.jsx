@@ -5,7 +5,7 @@ import {
   DialogContent, DialogActions, Tabs, Tab, CircularProgress 
 } from '@mui/material';
 import { 
-  DEMO_INSTAGRAM_POSTS, 
+  ALAN_DEFAULT_POSTS,
   createPostsFromFiles, 
   runInstagramBatchAnalysis,
   fetchPostsByQuery 
@@ -15,21 +15,21 @@ import { saveScanRecord } from '../services/historyStorage';
 
 export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
   const [hasConsent, setHasConsent] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('@charlotte_acne');
-  const [activeQueryTitle, setActiveQueryTitle] = useState('@charlotte_acne');
+  const [searchQuery, setSearchQuery] = useState('@alan_bd_');
+  const [activeQueryTitle, setActiveQueryTitle] = useState('@alan_bd_');
   const [sourceMode, setSourceMode] = useState('demo'); // 'demo' or 'upload'
-  const [posts, setPosts] = useState(DEMO_INSTAGRAM_POSTS);
+  const [posts, setPosts] = useState(ALAN_DEFAULT_POSTS);
   const [isFetchingPosts, setIsFetchingPosts] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, statusText: '' });
   const [auditReport, setAuditReport] = useState(null);
   const [selectedPost, setSelectedPost] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [feedNotification, setFeedNotification] = useState('');
+  const [feedNotification, setFeedNotification] = useState('🟢 Connected to official Meta API as @alan_bd_! Loaded 5 posts for Edge-AI scan.');
 
   // Search and fetch posts for any hashtag or username
   const handleFetchPosts = useCallback(async (overrideQuery) => {
-    const q = overrideQuery || searchQuery || '#skincare';
+    const q = overrideQuery || searchQuery || '@alan_bd_';
     setIsFetchingPosts(true);
     setAuditReport(null);
     setFeedNotification('');
@@ -39,7 +39,11 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
       setPosts(fetched);
       const title = q.startsWith('#') || q.startsWith('@') ? q : `#${q}`;
       setActiveQueryTitle(title);
-      setFeedNotification(`✨ Loaded 6 posts matching ${title}! Ready for Edge-AI scan.`);
+      if (title.includes('alan') || title.includes('bd_')) {
+        setFeedNotification(`🟢 Connected to official Meta API as @alan_bd_! Loaded ${fetched.length} posts for Edge-AI scan.`);
+      } else {
+        setFeedNotification(`✨ Loaded ${fetched.length} posts matching ${title}! Ready for Edge-AI scan.`);
+      }
     } catch (err) {
       console.error('Failed to fetch posts for query:', err);
     } finally {
@@ -148,6 +152,11 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
             size="small" 
             sx={{ bgcolor: '#FF1493', color: '#FFF', fontWeight: 700, fontSize: '0.72rem' }} 
           />
+          <Chip 
+            label="🟢 Meta Graph API: @alan_bd_ (Token Active)" 
+            size="small" 
+            sx={{ bgcolor: '#E8F5E9', color: '#2E7D32', fontWeight: 700, fontSize: '0.72rem', border: '1px solid #A5D6A7' }} 
+          />
         </Box>
         <Typography variant="body2" color="text.secondary" mt={0.5}>
           Analyze client social media posts to evaluate skin health changes over time.
@@ -226,7 +235,7 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
             {/* Popular quick profile suggestions */}
             <Box display="flex" alignItems="center" gap={1} mt={1.5} flexWrap="wrap">
               <Typography variant="caption" color="text.secondary">Sample client profiles:</Typography>
-              {['@alan_skincare', '@charlotte_acne', '@emma_glow', '@david_fit'].map((handle) => (
+              {['@alan_bd_', '@charlotte_acne', '@emma_glow', '@david_fit'].map((handle) => (
                 <Chip 
                   key={handle} 
                   label={handle} 

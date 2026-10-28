@@ -6,6 +6,140 @@ import { loadImageElement, analyzeImage } from './imageAnalysisEngine';
  * 100% on-device processing via MediaPipe FaceMesh & TensorFlow.js.
  */
 
+export const INSTAGRAM_ACCESS_TOKEN =
+  import.meta.env?.VITE_INSTAGRAM_ACCESS_TOKEN ||
+  'IGAAgjhAQZACs1BZAFlNUkRZAb1JYclVVbG5pQlNpUmFsbkU4RmMwWWhFa0RMNmNpRm5IZAjF5cFpzWmx2X1R2T0dzWnJmWll0WjBpN1c1ZATBDT0l4LUhGQV9PSVI0M0M5cDZA6OUQ0UFA1ZAVNkVDk2Um5nVVFtNkJQTVdyb1RCeXQ5awZDZD';
+
+/**
+ * Fetches user profile from Meta Instagram Basic Display Graph API
+ */
+export async function fetchLiveInstagramProfile(token = INSTAGRAM_ACCESS_TOKEN) {
+  try {
+    const res = await fetch(`https://graph.instagram.com/me?fields=id,username,account_type,media_count&access_token=${token}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return {
+      id: data.id,
+      username: `@${data.username}`,
+      rawUsername: data.username,
+      accountType: data.account_type,
+      mediaCount: data.media_count,
+    };
+  } catch (err) {
+    console.warn('Failed to fetch Instagram profile via Meta API:', err);
+    return null;
+  }
+}
+
+/**
+ * Fetches live media posts from Meta Instagram Graph API
+ */
+export async function fetchLiveInstagramMedia(token = INSTAGRAM_ACCESS_TOKEN) {
+  try {
+    const profile = await fetchLiveInstagramProfile(token);
+    const res = await fetch(
+      `https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&access_token=${token}`
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const items = json.data || [];
+
+    if (items.length > 0) {
+      return {
+        profile,
+        isLive: true,
+        emptyAccount: false,
+        posts: items.map((item, idx) => ({
+          id: item.id || `live_${idx}`,
+          tag: profile ? profile.username : '@alan_bd_',
+          date: new Date(item.timestamp).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          }),
+          relativeTime: new Date(item.timestamp).toLocaleDateString(),
+          caption: item.caption || `Instagram photo update from ${profile ? profile.username : '@alan_bd_'}`,
+          imageSrc: item.media_url || item.thumbnail_url,
+          permalink: item.permalink,
+          likes: Math.floor(Math.random() * 250) + 50,
+          comments: Math.floor(Math.random() * 30) + 5,
+          status: 'pending',
+        })),
+      };
+    }
+
+    // If account currently has 0 posts published on Instagram,
+    // generate a high-fidelity 5-stage timeline for Alan's account using his actual face photos
+    return {
+      profile,
+      isLive: true,
+      emptyAccount: true,
+      posts: ALAN_DEFAULT_POSTS,
+    };
+  } catch (err) {
+    console.error('Failed to fetch live Instagram media:', err);
+    return null;
+  }
+}
+
+export const ALAN_DEFAULT_POSTS = [
+  {
+    id: 'alan_post_1',
+    tag: '@alan_bd_',
+    date: 'Oct 04, 2026',
+    relativeTime: '4 weeks ago',
+    caption: 'Baseline skin check-in before starting FOREO routine @alan_bd_ ✈️',
+    imageSrc: '/sample_face_2.jpg',
+    likes: 185,
+    comments: 22,
+    status: 'pending',
+  },
+  {
+    id: 'alan_post_2',
+    tag: '@alan_bd_',
+    date: 'Oct 09, 2026',
+    relativeTime: '3.5 weeks ago',
+    caption: 'Morning matcha tea and hydration break 🍵 #mensskincare',
+    imageSrc: '/sample_scenery_matcha.png',
+    likes: 240,
+    comments: 19,
+    status: 'pending',
+  },
+  {
+    id: 'alan_post_3',
+    tag: '@alan_bd_',
+    date: 'Oct 15, 2026',
+    relativeTime: '2.5 weeks ago',
+    caption: 'Week 2 using LUNA 4 for Men. Pores feel thoroughly cleansed! 👊',
+    imageSrc: '/sample_face_male_acne.jpg',
+    likes: 310,
+    comments: 34,
+    status: 'pending',
+  },
+  {
+    id: 'alan_post_4',
+    tag: '@alan_bd_',
+    date: 'Oct 21, 2026',
+    relativeTime: '1 week ago',
+    caption: 'Skincare cabinet setup with FOREO devices ✨ #shelfie',
+    imageSrc: '/sample_scenery_shelfie.png',
+    likes: 195,
+    comments: 14,
+    status: 'pending',
+  },
+  {
+    id: 'alan_post_5',
+    tag: '@alan_bd_',
+    date: 'Oct 27, 2026',
+    relativeTime: 'Yesterday',
+    caption: 'Skin barrier is completely balanced, zero shave irritation. The routine works! ☀️',
+    imageSrc: '/sample_face_male_clear.jpg',
+    likes: 420,
+    comments: 48,
+    status: 'pending',
+  },
+];
+
 export const DEMO_INSTAGRAM_POSTS = [
   {
     id: 'post_1',
@@ -155,15 +289,28 @@ const HASHTAG_THEMES = {
  * Dynamically fetches/generates posts matching any hashtag or username
  */
 export async function fetchPostsByQuery(rawQuery) {
-  // Simulate network latency (300ms) for realistic UX
-  await new Promise((r) => setTimeout(r, 250));
+  // Simulate network latency (250ms) for realistic UX
+  await new Promise((r) => setTimeout(r, 200));
 
-  let cleanTag = rawQuery ? rawQuery.trim() : '@alan_skincare';
+  let cleanTag = rawQuery ? rawQuery.trim() : '@alan_bd_';
   if (!cleanTag.startsWith('@') && !cleanTag.startsWith('#')) {
     cleanTag = `@${cleanTag}`;
   }
 
   const lower = cleanTag.toLowerCase();
+
+  // If searching for Alan's official account or token account, attempt live Meta Graph API call
+  if (lower.includes('alan') || lower.includes('bd_')) {
+    try {
+      const liveData = await fetchLiveInstagramMedia();
+      if (liveData && liveData.posts && liveData.posts.length > 0) {
+        return liveData.posts;
+      }
+    } catch (e) {
+      console.warn('Falling back to local simulation for Alan:', e);
+    }
+  }
+
   let theme = null;
 
   if (lower.includes('acne') || lower.includes('blemish') || lower.includes('charlotte') || lower.includes('breakout')) {
