@@ -139,19 +139,19 @@ export async function fetchPostsByQuery(rawQuery) {
   // Simulate network latency (300ms) for realistic UX
   await new Promise((r) => setTimeout(r, 250));
 
-  let cleanTag = rawQuery ? rawQuery.trim() : '#skincare';
-  if (!cleanTag.startsWith('#') && !cleanTag.startsWith('@')) {
-    cleanTag = `#${cleanTag}`;
+  let cleanTag = rawQuery ? rawQuery.trim() : '@alan_skincare';
+  if (!cleanTag.startsWith('@') && !cleanTag.startsWith('#')) {
+    cleanTag = `@${cleanTag}`;
   }
 
   const lower = cleanTag.toLowerCase();
   let theme = null;
 
-  if (lower.includes('acne') || lower.includes('blemish') || lower.includes('red') || lower.includes('breakout')) {
+  if (lower.includes('acne') || lower.includes('blemish') || lower.includes('charlotte') || lower.includes('breakout')) {
     theme = HASHTAG_THEMES.acne;
-  } else if (lower.includes('foreo') || lower.includes('luna') || lower.includes('ufo') || lower.includes('bear')) {
+  } else if (lower.includes('alan') || lower.includes('foreo') || lower.includes('luna') || lower.includes('ufo')) {
     theme = HASHTAG_THEMES.foreo;
-  } else if (lower.includes('glow') || lower.includes('clear') || lower.includes('dewy')) {
+  } else if (lower.includes('glow') || lower.includes('clear') || lower.includes('emma') || lower.includes('david')) {
     theme = HASHTAG_THEMES.glow;
   }
 

@@ -15,8 +15,8 @@ import { saveScanRecord } from '../services/historyStorage';
 
 export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
   const [hasConsent, setHasConsent] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('#foreoglow');
-  const [activeQueryTitle, setActiveQueryTitle] = useState('#foreoglow');
+  const [searchQuery, setSearchQuery] = useState('@alan_skincare');
+  const [activeQueryTitle, setActiveQueryTitle] = useState('@alan_skincare');
   const [sourceMode, setSourceMode] = useState('demo'); // 'demo' or 'upload'
   const [posts, setPosts] = useState(DEMO_INSTAGRAM_POSTS);
   const [isFetchingPosts, setIsFetchingPosts] = useState(false);
@@ -196,7 +196,7 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
           onChange={(e, val) => setSourceMode(val)}
           sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
         >
-          <Tab label="🏷️ Search Hashtag or @Handle" value="demo" sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab label="👤 Client Profile (@Handle)" value="demo" sx={{ textTransform: 'none', fontWeight: 600 }} />
           <Tab label="📂 Upload Client Photos" value="upload" sx={{ textTransform: 'none', fontWeight: 600 }} />
         </Tabs>
 
@@ -204,9 +204,9 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
           <Box>
             <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap">
               <TextField 
-                label="Instagram Hashtag or @Handle" 
-                placeholder="e.g. #acnecare, #foreoglow, #clearskin"
-                helperText="Auto-updates feed when you type or select a tag"
+                label="Instagram Username (@)" 
+                placeholder="e.g. @alan_skincare, @charlotte_acne"
+                helperText="Auto-updates feed when you type or select a profile"
                 value={searchQuery} 
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleFetchPosts(); }}
@@ -219,27 +219,27 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
                 disabled={isFetchingPosts}
                 sx={{ bgcolor: '#1A1A2E', '&:hover': { bgcolor: '#333' }, textTransform: 'none', fontWeight: 600, px: 2.5, mb: { xs: 0, sm: 2.5 } }}
               >
-                {isFetchingPosts ? <CircularProgress size={20} color="inherit" /> : '🔍 Fetch Posts'}
+                {isFetchingPosts ? <CircularProgress size={20} color="inherit" /> : '🔍 Fetch Profile'}
               </Button>
             </Box>
 
-            {/* Popular quick-tag suggestions */}
+            {/* Popular quick profile suggestions */}
             <Box display="flex" alignItems="center" gap={1} mt={1.5} flexWrap="wrap">
-              <Typography variant="caption" color="text.secondary">Try popular tags:</Typography>
-              {['#foreoglow', '#acnecare', '#skincare', '#clearskin', '#routine'].map((tag) => (
+              <Typography variant="caption" color="text.secondary">Sample client profiles:</Typography>
+              {['@alan_skincare', '@charlotte_acne', '@emma_glow', '@david_fit'].map((handle) => (
                 <Chip 
-                  key={tag} 
-                  label={tag} 
+                  key={handle} 
+                  label={handle} 
                   size="small" 
                   clickable 
-                  onClick={() => handleSelectQuickTag(tag)}
+                  onClick={() => handleSelectQuickTag(handle)}
                   sx={{ 
                     fontSize: '0.75rem', 
                     height: 24, 
                     cursor: 'pointer',
-                    bgcolor: searchQuery === tag ? '#FF1493' : '#F0F0F0',
-                    color: searchQuery === tag ? '#FFF' : '#333',
-                    fontWeight: searchQuery === tag ? 700 : 500,
+                    bgcolor: searchQuery === handle ? '#FF1493' : '#F0F0F0',
+                    color: searchQuery === handle ? '#FFF' : '#333',
+                    fontWeight: searchQuery === handle ? 700 : 500,
                   }} 
                 />
               ))}
