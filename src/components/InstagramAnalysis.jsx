@@ -359,25 +359,118 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
               </Paper>
             </Box>
 
+            {/* Visual Comparison: Earliest Post vs Latest Post */}
+            {completedPosts.length >= 2 && (
+              <Box mb={3} p={2} sx={{ bgcolor: '#F8F9FA', borderRadius: 2.5, border: '1px solid #EAEAEA' }}>
+                <Typography variant="subtitle2" fontWeight={800} color="#1A1A2E" mb={1.5}>
+                  📸 Visual Progress (Earliest vs. Latest Analyzed Post):
+                </Typography>
+                <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }} gap={2}>
+                  {/* Earliest Post */}
+                  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: '#FFF' }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                      <Typography variant="caption" fontWeight={700} color="text.secondary">
+                        EARLIEST • {completedPosts[0].date}
+                      </Typography>
+                      <Chip label={`Health: ${completedPosts[0].healthScore}%`} size="small" sx={{ fontWeight: 700 }} />
+                    </Box>
+                    <Box display="flex" gap={1.5} alignItems="center">
+                      <img 
+                        src={completedPosts[0].imageSrc} 
+                        alt="Earliest" 
+                        style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 8, border: '2px solid #E0E0E0' }} 
+                      />
+                      <Box>
+                        <Typography variant="caption" display="block" color="#C62828" fontWeight={700}>
+                          Redness: {completedPosts[0].metrics?.Redness}%
+                        </Typography>
+                        <Typography variant="caption" display="block" color="#1565C0" fontWeight={700}>
+                          Oiliness: {completedPosts[0].metrics?.Oiliness}%
+                        </Typography>
+                        <Typography variant="caption" display="block" color="#6A1B9A" fontWeight={700}>
+                          Texture: {completedPosts[0].metrics?.Texture}%
+                        </Typography>
+                        <Typography variant="caption" display="block" color="text.secondary" mt={0.5}>
+                          Skin: <strong>{completedPosts[0].skinType}</strong>
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+
+                  {/* Latest Post */}
+                  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: '#F1FDF5', borderColor: '#81C784' }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                      <Typography variant="caption" fontWeight={700} color="#2E7D32">
+                        LATEST • {completedPosts[completedPosts.length - 1].date}
+                      </Typography>
+                      <Chip label={`Health: ${completedPosts[completedPosts.length - 1].healthScore}%`} size="small" color="success" sx={{ fontWeight: 700 }} />
+                    </Box>
+                    <Box display="flex" gap={1.5} alignItems="center">
+                      <img 
+                        src={completedPosts[completedPosts.length - 1].imageSrc} 
+                        alt="Latest" 
+                        style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 8, border: '2px solid #81C784' }} 
+                      />
+                      <Box>
+                        <Typography variant="caption" display="block" color="#C62828" fontWeight={700}>
+                          Redness: {completedPosts[completedPosts.length - 1].metrics?.Redness}%
+                        </Typography>
+                        <Typography variant="caption" display="block" color="#1565C0" fontWeight={700}>
+                          Oiliness: {completedPosts[completedPosts.length - 1].metrics?.Oiliness}%
+                        </Typography>
+                        <Typography variant="caption" display="block" color="#6A1B9A" fontWeight={700}>
+                          Texture: {completedPosts[completedPosts.length - 1].metrics?.Texture}%
+                        </Typography>
+                        <Typography variant="caption" display="block" color="#2E7D32" mt={0.5}>
+                          Skin: <strong>{completedPosts[completedPosts.length - 1].skinType}</strong>
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Box>
+              </Box>
+            )}
+
             {/* Timeline Progress Bar across Instagram Feed */}
             {completedPosts.length >= 2 && (
               <Box mb={3} p={2} sx={{ bgcolor: '#F9F9FB', borderRadius: 2 }}>
                 <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-                  Skin Health Timeline Across Posts:
+                  Skin Health Timeline Across Posts (Click photo to inspect):
                 </Typography>
                 <Box display="flex" gap={1.5} alignItems="center" flexWrap="wrap">
                   {completedPosts.map((cp, idx) => (
-                    <Box key={cp.id} sx={{ textAlign: 'center', flexGrow: 1, minWidth: 100 }}>
-                      <Typography variant="caption" color="text.secondary" display="block">
+                    <Paper 
+                      key={cp.id} 
+                      variant="outlined"
+                      onClick={() => setSelectedPost(cp)}
+                      sx={{ 
+                        p: 1, 
+                        textAlign: 'center', 
+                        flexGrow: 1, 
+                        minWidth: 100,
+                        cursor: 'pointer',
+                        borderRadius: 2,
+                        bgcolor: idx === completedPosts.length - 1 ? '#F1FDF5' : '#FFF',
+                        borderColor: idx === completedPosts.length - 1 ? '#81C784' : '#E0E0E0',
+                        transition: 'transform 0.15s',
+                        '&:hover': { transform: 'scale(1.03)', boxShadow: 2 }
+                      }}
+                    >
+                      <img 
+                        src={cp.imageSrc} 
+                        alt={cp.date} 
+                        style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6, display: 'block', margin: '0 auto 6px' }} 
+                      />
+                      <Typography variant="caption" color="text.secondary" display="block" fontWeight={600}>
                         {cp.date}
                       </Typography>
                       <Chip 
                         label={`Health: ${cp.healthScore}%`} 
                         size="small" 
                         color={idx === completedPosts.length - 1 ? 'success' : 'primary'} 
-                        sx={{ fontWeight: 700, mt: 0.5 }} 
+                        sx={{ fontWeight: 700, mt: 0.5, height: 22, fontSize: '0.72rem' }} 
                       />
-                    </Box>
+                    </Paper>
                   ))}
                 </Box>
               </Box>
