@@ -1,38 +1,82 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Box, Typography, Paper, Button, TextField, Checkbox, FormControlLabel, 
   Alert, Chip, LinearProgress, Card, CardContent, Dialog, DialogTitle, 
-  DialogContent, DialogActions, Tabs, Tab 
+  DialogContent, DialogActions, Tabs, Tab, CircularProgress 
 } from '@mui/material';
-import { DEMO_INSTAGRAM_POSTS, createPostsFromFiles, runInstagramBatchAnalysis } from '../services/instagramService';
+import { 
+  DEMO_INSTAGRAM_POSTS, 
+  createPostsFromFiles, 
+  runInstagramBatchAnalysis,
+  fetchPostsByQuery 
+} from '../services/instagramService';
 import RecommendationCard from './RecommendationCard';
 import { saveScanRecord } from '../services/historyStorage';
 
 export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
   const [hasConsent, setHasConsent] = useState(false);
-  const [handle, setHandle] = useState('@alan_skincare');
+  const [searchQuery, setSearchQuery] = useState('#foreoglow');
+  const [activeQueryTitle, setActiveQueryTitle] = useState('#foreoglow');
   const [sourceMode, setSourceMode] = useState('demo'); // 'demo' or 'upload'
   const [posts, setPosts] = useState(DEMO_INSTAGRAM_POSTS);
+  const [isFetchingPosts, setIsFetchingPosts] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, statusText: '' });
   const [auditReport, setAuditReport] = useState(null);
   const [selectedPost, setSelectedPost] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [feedNotification, setFeedNotification] = useState('');
+
+  // Search and fetch posts for any hashtag or username
+  const handleFetchPosts = useCallback(async (overrideQuery) => {
+    const q = overrideQuery || searchQuery || '#skincare';
+    setIsFetchingPosts(true);
+    setAuditReport(null);
+    setFeedNotification('');
+
+    try {
+      const fetched = await fetchPostsByQuery(q);
+      setPosts(fetched);
+      const title = q.startsWith('#') || q.startsWith('@') ? q : `#${q}`;
+      setActiveQueryTitle(title);
+      setFeedNotification(`✨ Loaded 6 posts matching ${title}! Ready for Edge-AI scan.`);
+    } catch (err) {
+      console.error('Failed to fetch posts for query:', err);
+    } finally {
+      setIsFetchingPosts(false);
+    }
+  }, [searchQuery]);
+
+  // Auto-fetch posts with 500ms debounce when user types a hashtag
+  useEffect(() => {
+    if (sourceMode !== 'demo') return;
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+    const clean = trimmed.startsWith('#') || trimmed.startsWith('@') ? trimmed : `#${trimmed}`;
+    if (clean === activeQueryTitle) return;
+
+    const timer = setTimeout(() => {
+      handleFetchPosts(trimmed);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, sourceMode, activeQueryTitle, handleFetchPosts]);
+
+  const handleSelectQuickTag = (tag) => {
+    setSearchQuery(tag);
+    handleFetchPosts(tag);
+  };
 
   // Handle uploading client photos
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 0) {
-      const newPosts = createPostsFromFiles(files);
+      const newPosts = createPostsFromFiles(files, searchQuery || '#client');
       setPosts(newPosts);
+      setActiveQueryTitle(`${files.length} Uploaded Photos`);
       setAuditReport(null);
+      setFeedNotification(`Imported ${files.length} client photos into feed.`);
     }
-  };
-
-  // Reset to demo feed
-  const handleLoadDemo = () => {
-    setPosts(DEMO_INSTAGRAM_POSTS);
-    setAuditReport(null);
   };
 
   // Run the batch analysis
@@ -53,7 +97,6 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
             total,
             statusText: currentPost ? `Analyzing ${currentPost.date}...` : 'Wrapping up audit...',
           });
-          // Update post status live in UI
           setPosts((prev) =>
             prev.map((p) => (p.id === currentPost?.id ? { ...p, status: currentPost.status } : p))
           );
@@ -73,7 +116,7 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
             recommendation: latestFacePost.recommendation,
             rois: latestFacePost.rois,
             detectedConcerns: [
-              `Instagram Audit (${handle})`,
+              `Instagram Audit (${activeQueryTitle})`,
               ...(latestFacePost.diagnosis.detectedConcerns || []),
             ],
           });
@@ -95,38 +138,38 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
   return (
     <Box mt={2}>
       {/* Header Banner */}
-      <Box mb={3}>
+      <Box mb={2.5}>
         <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap">
           <Typography variant="h5" fontWeight={800} color="#1A1A2E">
-            Instagram Client Skin Audit
+            Instagram Feed Skin Audit
           </Typography>
           <Chip 
-            label="NEW • Frank & Linda Feature" 
+            label="Frank & Linda Feature" 
             size="small" 
-            sx={{ bgcolor: '#FF1493', color: '#FFF', fontWeight: 700, fontSize: '0.75rem' }} 
+            sx={{ bgcolor: '#FF1493', color: '#FFF', fontWeight: 700, fontSize: '0.72rem' }} 
           />
         </Box>
         <Typography variant="body2" color="text.secondary" mt={0.5}>
-          Analyze a client's social feed photos with explicit consent to detect longitudinal skin recovery trends over time.
+          Analyze client social media posts to evaluate skin health changes over time.
         </Typography>
       </Box>
 
-      {/* 1. Explicit Consent & Privacy Agreement Card */}
+      {/* 1. Short, Intern-Style Consent Box */}
       <Paper 
-        elevation={2} 
+        elevation={1} 
         sx={{ 
-          p: 2.5, 
-          mb: 3, 
-          borderRadius: 3, 
+          p: 2, 
+          mb: 2.5, 
+          borderRadius: 2.5, 
           bgcolor: hasConsent ? '#F1FDF5' : '#FFF9F5',
-          border: hasConsent ? '2px solid #81C784' : '2px solid #FFAB91',
+          border: hasConsent ? '1px solid #81C784' : '1px solid #FFCC80',
         }}
       >
-        <Typography variant="subtitle1" fontWeight={700} color={hasConsent ? '#2E7D32' : '#D84315'} gutterBottom>
-          🔒 Client Consent & Privacy Authorization
+        <Typography variant="subtitle2" fontWeight={700} color={hasConsent ? '#2E7D32' : '#E65100'} gutterBottom>
+          🔒 Quick Consent
         </Typography>
-        <Typography variant="body2" color="text.secondary" mb={1.5} lineHeight={1.5}>
-          To comply with privacy laws (GDPR, HIPAA, and FOREO brand standards), we require explicit client authorization before processing Instagram photos. All face landmarking and TensorFlow.js metric scoring run <strong>100% on-device</strong>. Zero image data is ever uploaded to any cloud server.
+        <Typography variant="body2" color="text.secondary" mb={1} fontSize="0.85rem">
+          Photos never leave your phone. 100% on-device AI.
         </Typography>
 
         <FormControlLabel
@@ -134,43 +177,73 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
             <Checkbox 
               checked={hasConsent} 
               onChange={(e) => setHasConsent(e.target.checked)} 
+              size="small"
               color="primary"
             />
           }
           label={
-            <Typography variant="body2" fontWeight={700} color="#1A1A2E">
-              I consent to FOREO Skin Diagnostic Engine inspecting my Instagram feed photos to evaluate skin health trends.
+            <Typography variant="body2" fontWeight={600} color="#1A1A2E">
+              I agree to scan my Instagram photos for skin trends
             </Typography>
           }
         />
       </Paper>
 
-      {/* 2. Source Selection (Demo Handle vs Client File Upload) */}
+      {/* 2. Hashtag & Account Search / Ingestion */}
       <Paper elevation={1} sx={{ p: 2.5, mb: 3, borderRadius: 3, bgcolor: '#FFF' }}>
         <Tabs 
           value={sourceMode} 
           onChange={(e, val) => setSourceMode(val)}
           sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
         >
-          <Tab label="📱 Demo Instagram Feed (@handle)" value="demo" sx={{ textTransform: 'none', fontWeight: 600 }} />
-          <Tab label="📂 Upload Client Instagram Photos" value="upload" sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab label="🏷️ Search Hashtag or @Handle" value="demo" sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab label="📂 Upload Client Photos" value="upload" sx={{ textTransform: 'none', fontWeight: 600 }} />
         </Tabs>
 
         {sourceMode === 'demo' ? (
-          <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
-            <TextField 
-              label="Instagram Username" 
-              value={handle} 
-              onChange={(e) => setHandle(e.target.value)}
-              size="small"
-              sx={{ width: 220 }}
-            />
-            <Button variant="outlined" size="medium" onClick={handleLoadDemo} sx={{ textTransform: 'none' }}>
-              Reset Demo Feed (6 Posts)
-            </Button>
-            <Typography variant="caption" color="text.secondary">
-              Includes 4 facial timeline photos + 2 lifestyle shots to demonstrate smart face filtering.
-            </Typography>
+          <Box>
+            <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap">
+              <TextField 
+                label="Instagram Hashtag or @Handle" 
+                placeholder="e.g. #acnecare, #foreoglow, #clearskin"
+                helperText="Auto-updates feed when you type or select a tag"
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleFetchPosts(); }}
+                size="small"
+                sx={{ minWidth: 280 }}
+              />
+              <Button 
+                variant="contained" 
+                onClick={() => handleFetchPosts()}
+                disabled={isFetchingPosts}
+                sx={{ bgcolor: '#1A1A2E', '&:hover': { bgcolor: '#333' }, textTransform: 'none', fontWeight: 600, px: 2.5, mb: { xs: 0, sm: 2.5 } }}
+              >
+                {isFetchingPosts ? <CircularProgress size={20} color="inherit" /> : '🔍 Fetch Posts'}
+              </Button>
+            </Box>
+
+            {/* Popular quick-tag suggestions */}
+            <Box display="flex" alignItems="center" gap={1} mt={1.5} flexWrap="wrap">
+              <Typography variant="caption" color="text.secondary">Try popular tags:</Typography>
+              {['#foreoglow', '#acnecare', '#skincare', '#clearskin', '#routine'].map((tag) => (
+                <Chip 
+                  key={tag} 
+                  label={tag} 
+                  size="small" 
+                  clickable 
+                  onClick={() => handleSelectQuickTag(tag)}
+                  sx={{ 
+                    fontSize: '0.75rem', 
+                    height: 24, 
+                    cursor: 'pointer',
+                    bgcolor: searchQuery === tag ? '#FF1493' : '#F0F0F0',
+                    color: searchQuery === tag ? '#FFF' : '#333',
+                    fontWeight: searchQuery === tag ? 700 : 500,
+                  }} 
+                />
+              ))}
+            </Box>
           </Box>
         ) : (
           <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
@@ -179,32 +252,39 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
               <input type="file" hidden multiple accept="image/*" onChange={handleFileUpload} />
             </Button>
             <Typography variant="caption" color="text.secondary">
-              Photos will be arranged into a simulated Instagram chronological timeline.
+              Selected photos will be placed into the timeline for batch analysis.
             </Typography>
           </Box>
         )}
 
-        <Box mt={2.5}>
+        {feedNotification && (
+          <Alert severity="success" sx={{ mt: 2, py: 0.5, fontSize: '0.85rem' }}>
+            {feedNotification}
+          </Alert>
+        )}
+
+        <Box mt={2.5} display="flex" alignItems="center" gap={2} flexWrap="wrap">
           <Button 
             variant="contained" 
             color="secondary" 
             size="large"
             disabled={!hasConsent || isScanning}
             onClick={handleStartScan}
-            sx={{ px: 4, py: 1.2, fontWeight: 700, borderRadius: 2 }}
+            sx={{ px: 4, py: 1.1, fontWeight: 700, borderRadius: 2 }}
           >
-            {isScanning ? 'Scanning Instagram Feed...' : `⚡ Run Edge-AI Audit (${posts.length} Posts)`}
+            {isScanning ? 'Scanning Posts...' : `⚡ Run Edge-AI Audit (${posts.length} Posts)`}
           </Button>
+
           {!hasConsent && (
-            <Typography variant="caption" color="error" display="block" mt={1}>
-              * Please check the consent authorization above to enable scanning.
+            <Typography variant="caption" color="error">
+              * Check consent above to run scan
             </Typography>
           )}
         </Box>
 
         {isScanning && (
-          <Box mt={3}>
-            <Box display="flex" justifyContent="space-between" mb={1}>
+          <Box mt={2.5}>
+            <Box display="flex" justifyContent="space-between" mb={0.5}>
               <Typography variant="caption" fontWeight={700} color="secondary">
                 {scanProgress.statusText}
               </Typography>
@@ -216,46 +296,45 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
               variant="determinate" 
               value={(scanProgress.current / (scanProgress.total || 1)) * 100} 
               color="secondary"
-              sx={{ height: 8, borderRadius: 4 }}
+              sx={{ height: 7, borderRadius: 3.5 }}
             />
           </Box>
         )}
       </Paper>
 
-      {/* 3. Instagram Social Audit Report (Displays when audit complete) */}
+      {/* 3. Instagram Social Audit Report */}
       {auditReport && (
         <Box mb={4}>
           <Paper elevation={3} sx={{ p: 3, borderRadius: 3, bgcolor: '#FFF', border: '2px solid #FF1493' }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
               <Box>
                 <Typography variant="overline" color="secondary" fontWeight={800} letterSpacing={1}>
-                  AUDIT COMPLETE • {handle}
+                  AUDIT RESULTS • {activeQueryTitle}
                 </Typography>
                 <Typography variant="h5" fontWeight={800} color="#1A1A2E">
                   Instagram Longitudinal Skin Report
                 </Typography>
               </Box>
               {saveSuccess && (
-                <Chip label="✓ Auto-Saved to Scan History" color="success" size="small" sx={{ fontWeight: 700 }} />
+                <Chip label="✓ Saved to History" color="success" size="small" sx={{ fontWeight: 700 }} />
               )}
             </Box>
 
-            {/* Verdict Alert */}
-            <Alert severity="info" sx={{ mb: 3, fontWeight: 600 }}>
+            <Alert severity="info" sx={{ mb: 2.5, fontWeight: 600 }}>
               {auditReport.summary.overallVerdict}
             </Alert>
 
             {/* Metric Summary Cards */}
-            <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(4, 1fr)' }} gap={2} mb={3}>
-              <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', borderRadius: 2, bgcolor: '#FAFAFC' }}>
+            <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(4, 1fr)' }} gap={1.5} mb={2.5}>
+              <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 2, bgcolor: '#FAFAFC' }}>
                 <Typography variant="caption" color="text.secondary" fontWeight={700}>POSTS AUDITED</Typography>
                 <Typography variant="h4" fontWeight={800} color="primary">{auditReport.summary.totalPosts}</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {auditReport.summary.facePostsCount} Face • {auditReport.summary.skippedCount} Non-Face
+                  {auditReport.summary.facePostsCount} Face • {auditReport.summary.skippedCount} Skipped
                 </Typography>
               </Paper>
 
-              <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', borderRadius: 2, bgcolor: '#FFF5F5' }}>
+              <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 2, bgcolor: '#FFF5F5' }}>
                 <Typography variant="caption" color="#C62828" fontWeight={700}>REDNESS CHANGE</Typography>
                 <Typography variant="h4" fontWeight={800} color="#C62828">
                   {auditReport.summary.rednessDelta <= 0 ? `${auditReport.summary.rednessDelta}%` : `+${auditReport.summary.rednessDelta}%`}
@@ -263,7 +342,7 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
                 <Typography variant="caption" color="text.secondary">Erythema Trend</Typography>
               </Paper>
 
-              <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', borderRadius: 2, bgcolor: '#F0F7FF' }}>
+              <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 2, bgcolor: '#F0F7FF' }}>
                 <Typography variant="caption" color="#1565C0" fontWeight={700}>SEBUM CHANGE</Typography>
                 <Typography variant="h4" fontWeight={800} color="#1565C0">
                   {auditReport.summary.oilinessDelta <= 0 ? `${auditReport.summary.oilinessDelta}%` : `+${auditReport.summary.oilinessDelta}%`}
@@ -271,12 +350,12 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
                 <Typography variant="caption" color="text.secondary">Oiliness Trend</Typography>
               </Paper>
 
-              <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', borderRadius: 2, bgcolor: '#F1FDF5' }}>
+              <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 2, bgcolor: '#F1FDF5' }}>
                 <Typography variant="caption" color="#2E7D32" fontWeight={700}>HEALTH PROGRESS</Typography>
                 <Typography variant="h4" fontWeight={800} color="#2E7D32">
                   {auditReport.summary.healthDelta >= 0 ? `+${auditReport.summary.healthDelta}%` : `${auditReport.summary.healthDelta}%`}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">Overall Skin Barrier</Typography>
+                <Typography variant="caption" color="text.secondary">Overall Barrier Balance</Typography>
               </Paper>
             </Box>
 
@@ -288,7 +367,7 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
                 </Typography>
                 <Box display="flex" gap={1.5} alignItems="center" flexWrap="wrap">
                   {completedPosts.map((cp, idx) => (
-                    <Box key={cp.id} textAlign="center" flexGrow={1} minWidth={100}>
+                    <Box key={cp.id} sx={{ textAlign: 'center', flexGrow: 1, minWidth: 100 }}>
                       <Typography variant="caption" color="text.secondary" display="block">
                         {cp.date}
                       </Typography>
@@ -318,11 +397,13 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
       )}
 
       {/* 4. Instagram Feed 3x3 Photo Grid */}
-      <Typography variant="h6" fontWeight={800} color="#1A1A2E" gutterBottom>
-        Instagram Posts Grid ({posts.length})
-      </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap">
+        <Typography variant="h6" fontWeight={800} color="#1A1A2E">
+          Current Feed: {activeQueryTitle} ({posts.length} Posts)
+        </Typography>
+      </Box>
       <Typography variant="body2" color="text.secondary" mb={2.5}>
-        Click on any analyzed post to inspect its individual facial landmarks, cropped regions, and metrics.
+        Click on any post after scanning to view its individual landmarks, cropped skin patches, and scores.
       </Typography>
 
       <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }} gap={2.5}>
@@ -360,18 +441,32 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
             </Box>
 
             {/* Post Photo */}
-            <Box sx={{ width: '100%', height: 240, overflow: 'hidden', bgcolor: '#000' }}>
+            <Box sx={{ width: '100%', height: 240, overflow: 'hidden', bgcolor: '#000', position: 'relative' }}>
               <img 
                 src={post.imageSrc} 
                 alt="Instagram post" 
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+              />
+              <Chip
+                label={post.tag || activeQueryTitle}
+                size="small"
+                sx={{
+                  position: 'absolute',
+                  top: 10,
+                  left: 10,
+                  bgcolor: 'rgba(0, 0, 0, 0.7)',
+                  color: '#FFF',
+                  fontWeight: 700,
+                  fontSize: '0.72rem',
+                  backdropFilter: 'blur(4px)',
+                }}
               />
             </Box>
 
             {/* Caption & Stats */}
             <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
               <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: 40 }}>
-                <strong>{handle}</strong> {post.caption}
+                {post.caption}
               </Typography>
 
               {post.status === 'completed' && (
@@ -405,7 +500,7 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
               Instagram Post Analysis • {selectedPost.date}
             </DialogTitle>
             <DialogContent dividers>
-              <Box mb={2} textAlign="center">
+              <Box mb={2} sx={{ textAlign: 'center' }}>
                 <img 
                   src={selectedPost.imageSrc} 
                   alt="Post Detail" 
@@ -419,7 +514,7 @@ export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
               {selectedPost.rois && (
                 <Box display="flex" justifyContent="space-around" mb={2}>
                   {Object.entries(selectedPost.rois).map(([region, src]) => (
-                    <Box key={region} textAlign="center">
+                    <Box key={region} sx={{ textAlign: 'center' }}>
                       <img src={src} alt={region} style={{ width: 64, height: 64, borderRadius: 6, border: '1px solid #CCC' }} />
                       <Typography variant="caption" display="block">{region}</Typography>
                     </Box>

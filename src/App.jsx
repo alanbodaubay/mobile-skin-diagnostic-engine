@@ -352,7 +352,7 @@ function App() {
                     </Typography>
                     <Box display="grid" gridTemplateColumns="repeat(4, 1fr)" gap={1.5}>
                       {Object.entries(rois).map(([region, src]) => (
-                        <Box key={region} textAlign="center" p={1} sx={{ bgcolor: '#F8F9FA', borderRadius: 2, border: '1px solid #EAEAEA' }}>
+                        <Box key={region} p={1} sx={{ textAlign: 'center', bgcolor: '#F8F9FA', borderRadius: 2, border: '1px solid #EAEAEA' }}>
                           <img src={src} alt={region} style={{ width: '100%', maxWidth: 70, height: 'auto', aspectRatio: '1/1', borderRadius: 6, display: 'block', margin: '0 auto' }} />
                           <Typography variant="caption" display="block" mt={0.5} fontWeight={600}>
                             {region}

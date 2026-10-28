@@ -55,7 +55,7 @@ export default function HistoryDashboard({ onStartNewScan }) {
 
   if (loading) {
     return (
-      <Box p={4} textAlign="center">
+      <Box p={4} sx={{ textAlign: 'center' }}>
         <LinearProgress color="secondary" />
         <Typography variant="body2" color="text.secondary" mt={2}>
           Loading on-device scan history...
@@ -198,7 +198,7 @@ export default function HistoryDashboard({ onStartNewScan }) {
               </Typography>
               <Box display="flex" justifyContent="space-around" flexWrap="wrap" gap={1}>
                 {Object.entries(firstScan.rois).map(([region, src]) => (
-                  <Box key={region} textAlign="center">
+                  <Box key={region} sx={{ textAlign: 'center' }}>
                     <img src={src} alt={region} style={{ width: 60, height: 60, borderRadius: 6, border: '1px solid #CCC' }} />
                     <Typography variant="caption" display="block">{region}</Typography>
                   </Box>
@@ -216,7 +216,7 @@ export default function HistoryDashboard({ onStartNewScan }) {
               </Typography>
               <Box display="flex" justifyContent="space-around" flexWrap="wrap" gap={1}>
                 {Object.entries(latestScan.rois).map(([region, src]) => (
-                  <Box key={region} textAlign="center">
+                  <Box key={region} sx={{ textAlign: 'center' }}>
                     <img src={src} alt={region} style={{ width: 60, height: 60, borderRadius: 6, border: '1px solid #81C784' }} />
                     <Typography variant="caption" display="block">{region}</Typography>
                   </Box>
