@@ -15,8 +15,8 @@ import { saveScanRecord } from '../services/historyStorage';
 
 export default function InstagramAnalysis({ faceMeshRef, onScanSaved }) {
   const [hasConsent, setHasConsent] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('@alan_skincare');
-  const [activeQueryTitle, setActiveQueryTitle] = useState('@alan_skincare');
+  const [searchQuery, setSearchQuery] = useState('@charlotte_acne');
+  const [activeQueryTitle, setActiveQueryTitle] = useState('@charlotte_acne');
   const [sourceMode, setSourceMode] = useState('demo'); // 'demo' or 'upload'
   const [posts, setPosts] = useState(DEMO_INSTAGRAM_POSTS);
   const [isFetchingPosts, setIsFetchingPosts] = useState(false);

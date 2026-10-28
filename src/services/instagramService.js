@@ -11,8 +11,8 @@ export const DEMO_INSTAGRAM_POSTS = [
     id: 'post_1',
     date: 'Oct 02, 2026',
     relativeTime: '4 weeks ago',
-    caption: 'Long travel week and feeling dehydrated! ✈️ Starting my skin reset with #skincare #foreo',
-    imageSrc: '/sample_face.png',
+    caption: 'Long travel week and breakouts starting on my cheeks! ✈️ Starting my skin reset @charlotte_acne',
+    imageSrc: '/insta_charlotte_1.jpg',
     likes: 142,
     comments: 18,
     status: 'pending',
@@ -22,7 +22,7 @@ export const DEMO_INSTAGRAM_POSTS = [
     date: 'Oct 07, 2026',
     relativeTime: '3.5 weeks ago',
     caption: 'Morning matcha latte before work 🍵 Healthy gut, healthy glow! #routine',
-    imageSrc: '/sample_scenery.png', // Non-face photo to showcase face detection filter
+    imageSrc: '/sample_scenery_matcha.png', // Non-face photo to showcase face detection filter
     likes: 210,
     comments: 24,
     status: 'pending',
@@ -31,8 +31,8 @@ export const DEMO_INSTAGRAM_POSTS = [
     id: 'post_3',
     date: 'Oct 12, 2026',
     relativeTime: '3 weeks ago',
-    caption: 'Day 10 using blue LED therapy for cheek redness. Feeling calmer already! 💙 #skincare',
-    imageSrc: '/sample_face_warm.jpg',
+    caption: 'Day 10 using ESPADA blue LED for cheek flare-up. Feeling calmer already! 💙',
+    imageSrc: '/insta_charlotte_2.jpg',
     likes: 318,
     comments: 42,
     status: 'pending',
@@ -42,7 +42,7 @@ export const DEMO_INSTAGRAM_POSTS = [
     date: 'Oct 17, 2026',
     relativeTime: '2 weeks ago',
     caption: 'Skincare cabinet shelfie! Consistency is everything ✨ #shelfie #products',
-    imageSrc: '/sample_scenery.png', // Non-face lifestyle shot
+    imageSrc: '/sample_scenery_shelfie.png', // Non-face lifestyle shot
     likes: 185,
     comments: 15,
     status: 'pending',
@@ -51,8 +51,8 @@ export const DEMO_INSTAGRAM_POSTS = [
     id: 'post_5',
     date: 'Oct 21, 2026',
     relativeTime: '1 week ago',
-    caption: 'Mid-month check-in: skin barrier feels so much smoother and less congested. #clearskin',
-    imageSrc: '/sample_face_cool.jpg',
+    caption: 'Mid-month check-in: skin barrier feels so much smoother and less congested.',
+    imageSrc: '/insta_emma_2.jpg',
     likes: 275,
     comments: 31,
     status: 'pending',
@@ -61,8 +61,8 @@ export const DEMO_INSTAGRAM_POSTS = [
     id: 'post_6',
     date: 'Oct 26, 2026',
     relativeTime: 'Just now',
-    caption: 'Sunday glow! Clear, balanced, and confident without heavy makeup 🥰 #foreoglow',
-    imageSrc: '/sample_face_bright.jpg',
+    caption: 'Sunday glow! Clear, balanced, and confident without heavy makeup 🥰 @charlotte_acne',
+    imageSrc: '/insta_glow_1.jpg',
     likes: 412,
     comments: 53,
     status: 'pending',
@@ -74,60 +74,79 @@ export const DEMO_INSTAGRAM_POSTS = [
  */
 const HASHTAG_THEMES = {
   acne: {
-    tag: '#acnecare',
+    tag: '@charlotte_acne',
     captions: [
-      'Struggling with breakouts and redness on my cheeks this week 😣 #acnecare #skinjourney',
-      'Iced matcha tea + plenty of water to calm morning inflammation 🍵 #acnecare',
-      'Targeted blue light treatment on day 7. Blemishes are visibly flatter! #acnecare #espada',
-      'Non-comedogenic skincare shelfie lineup! 🧴 #skincare',
-      'Week 3: cheek redness is way down and no new cystic spots forming #acnecare',
-      'Post-acne texture is smoothing out nicely! Loving this progress #clearskin #acnecare',
+      'Struggling with breakouts and redness on my cheeks this week 😣 @charlotte_acne #skinjourney',
+      'Iced matcha tea + plenty of water to calm morning inflammation 🍵 #detox',
+      'Targeted blue light treatment on day 7. Blemishes are visibly flatter! #espada #skincare',
+      'Non-comedogenic skincare shelfie lineup! 🧴 #shelfie',
+      'Week 3: cheek redness is way down and no new cystic spots forming ✨',
+      'Post-acne texture is smoothing out nicely! Loving this progress #clearskin',
     ],
     images: [
-      '/sample_face_acne.jpg',
+      '/insta_charlotte_1.jpg',
       '/sample_scenery_matcha.png',
-      '/sample_face_male_acne.jpg',
+      '/insta_charlotte_2.jpg',
       '/sample_scenery_shelfie.png',
-      '/sample_face_warm.jpg',
-      '/sample_face_cool.jpg',
+      '/insta_emma_2.jpg',
+      '/insta_glow_1.jpg',
     ],
   },
   foreo: {
-    tag: '#foreoglow',
+    tag: '@alan_skincare',
     captions: [
-      'Unboxing my new FOREO devices! Ready to take my routine to the next level #foreoglow',
-      'Morning essentials: coffee + LUNA 4 sonic cleanse ☕ #foreoglow #routine',
-      'UFO 3 deep hydration mask session tonight. Skin feels like velvet! #foreoglow',
+      'Unboxing my new FOREO devices! Ready to take my routine to the next level @alan_skincare',
+      'Morning essentials: coffee + LUNA 4 sonic cleanse ☕ #routine',
+      'UFO 3 deep hydration mask session tonight. Skin feels like velvet!',
       'Sunday spa day setup with UFO 3 & BEAR 2 🌸 #beautytech',
-      'Microcurrent facial toning with BEAR 2. Cheekbones are looking lifted! #foreoglow',
-      '4 weeks into the full FOREO routine. Best my skin has looked all year! ✨ #foreoglow',
+      'Microcurrent facial toning with BEAR 2. Cheekbones are looking lifted!',
+      '4 weeks into the full FOREO routine. Best my skin has looked all year! ✨',
     ],
     images: [
-      '/sample_face.png',
+      '/insta_glow_1.jpg',
       '/sample_scenery.png',
-      '/sample_face_warm.jpg',
+      '/insta_emma_1.jpg',
       '/sample_scenery_shelfie.png',
-      '/sample_face_bright.jpg',
-      '/sample_face_cool.jpg',
+      '/insta_charlotte_2.jpg',
+      '/insta_emma_2.jpg',
     ],
   },
   glow: {
-    tag: '#clearskin',
+    tag: '@emma_glow',
     captions: [
-      'Skin reset week starts now! Clean nutrition and deep hydration #clearskin',
+      'Skin reset week starts now! Clean nutrition and deep hydration @emma_glow',
       'Clean breakfast smoothie bowl 🍓 #lifestyle',
-      'Hyaluronic acid + peptide serum giving that dewy morning reflection #clearskin',
+      'Hyaluronic acid + peptide serum giving that dewy morning reflection',
       'Aesthetic nightstand essentials ✨ #skincareroutine',
       'Pores look tighter and redness is almost completely gone #clearskin',
-      'Golden hour selfie with zero foundation. The routine is paying off! ☀️ #clearskin',
+      'Golden hour selfie with zero foundation. The routine is paying off! ☀️',
     ],
     images: [
-      '/sample_face_male_clear.jpg',
+      '/insta_emma_1.jpg',
       '/sample_scenery_matcha.png',
-      '/sample_face_warm.jpg',
+      '/insta_emma_2.jpg',
       '/sample_scenery.png',
-      '/sample_face_2.jpg',
-      '/sample_face_bright.jpg',
+      '/insta_glow_1.jpg',
+      '/insta_charlotte_1.jpg',
+    ],
+  },
+  david: {
+    tag: '@david_fit',
+    captions: [
+      'Post-gym skin check! Remembering to cleanse immediately after workouts @david_fit',
+      'Matcha post-workout fuel 🍵 #mensskincare',
+      'Using FOREO LUNA 4 for Men. Shave irritation is down significantly!',
+      'Grooming essentials shelfie 🧴 #mensgrooming',
+      'Week 3 check: zero razor bumps and oiliness is balanced out nicely.',
+      'Clear, clean, and energized skin check 👊 #skincareformen',
+    ],
+    images: [
+      '/insta_david_1.jpg',
+      '/sample_scenery_matcha.png',
+      '/insta_david_2.jpg',
+      '/sample_scenery_shelfie.png',
+      '/insta_david_1.jpg',
+      '/insta_david_2.jpg',
     ],
   },
 };
@@ -149,10 +168,12 @@ export async function fetchPostsByQuery(rawQuery) {
 
   if (lower.includes('acne') || lower.includes('blemish') || lower.includes('charlotte') || lower.includes('breakout')) {
     theme = HASHTAG_THEMES.acne;
-  } else if (lower.includes('alan') || lower.includes('foreo') || lower.includes('luna') || lower.includes('ufo')) {
-    theme = HASHTAG_THEMES.foreo;
-  } else if (lower.includes('glow') || lower.includes('clear') || lower.includes('emma') || lower.includes('david')) {
+  } else if (lower.includes('david') || lower.includes('men') || lower.includes('fit')) {
+    theme = HASHTAG_THEMES.david;
+  } else if (lower.includes('glow') || lower.includes('clear') || lower.includes('emma')) {
     theme = HASHTAG_THEMES.glow;
+  } else {
+    theme = HASHTAG_THEMES.foreo;
   }
 
   const dates = [
