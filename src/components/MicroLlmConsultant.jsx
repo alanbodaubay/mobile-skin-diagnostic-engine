@@ -41,7 +41,7 @@ export default function MicroLlmConsultant({
     sender: 'ai',
     text: `Hello! I've reviewed your skin check-in. 
 
-Based on your scan, we tailored a routine centered around the **${devName}** to soothe redness, balance sebum, and keep your skin barrier healthy.
+Based on your scan, we tailored a routine centered around the ${devName} to soothe redness, balance sebum, and keep your skin barrier healthy.
 
 Ask me anything—like what to do if you don't have this device, whether you can pair it with Retinol, or how to wash with your hands instead!`,
   };
