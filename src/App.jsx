@@ -398,45 +398,45 @@ function App() {
                   <Box mt={4} width="100%">
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5} flexWrap="wrap" gap={1}>
                       <Typography variant="h5" fontWeight={800} color="#1A1A2E">
-                        On-Device Diagnostic Results
+                        Skin Assessment
                       </Typography>
                       <Chip label={aiResults.skinType} color="primary" sx={{ fontWeight: 700 }} />
                     </Box>
                     <Typography variant="caption" color="text.secondary" display="block" mb={2}>
-                      Engine: {aiResults.engine} • Confidence: {aiResults.confidence}%
+                      Analyzed 100% privately on your device.
                     </Typography>
 
                     {/* Metric Cards Grid */}
                     <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(4, 1fr)' }} gap={1.5} mb={2.5}>
                       <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', borderRadius: 2, bgcolor: '#FFF5F5', borderColor: '#FFCDD2' }}>
-                        <Typography variant="caption" color="#C62828" fontWeight={700}>ERYTHEMA / REDNESS</Typography>
-                        <Typography variant="h4" fontWeight={800} color="#C62828">{aiResults.metrics.Redness}%</Typography>
-                        <Typography variant="caption" color="text.secondary">Vascular Irritation</Typography>
+                        <Typography variant="caption" color="#C62828" fontWeight={700}>REDNESS</Typography>
+                        <Typography variant="h5" fontWeight={800} color="#C62828">{aiResults.metrics.Redness > 50 ? 'Elevated' : 'Calm'}</Typography>
+                        <Typography variant="caption" color="text.secondary">{aiResults.metrics.Redness}% index</Typography>
                       </Paper>
 
                       <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', borderRadius: 2, bgcolor: '#F0F7FF', borderColor: '#BBDEFB' }}>
-                        <Typography variant="caption" color="#1565C0" fontWeight={700}>SEBUM / OILINESS</Typography>
-                        <Typography variant="h4" fontWeight={800} color="#1565C0">{aiResults.metrics.Oiliness}%</Typography>
-                        <Typography variant="caption" color="text.secondary">Specular Reflectance</Typography>
+                        <Typography variant="caption" color="#1565C0" fontWeight={700}>SEBUM & SHINE</Typography>
+                        <Typography variant="h5" fontWeight={800} color="#1565C0">{aiResults.metrics.Oiliness > 50 ? 'Active' : 'Balanced'}</Typography>
+                        <Typography variant="caption" color="text.secondary">{aiResults.metrics.Oiliness}% index</Typography>
                       </Paper>
 
                       <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', borderRadius: 2, bgcolor: '#FAF5FF', borderColor: '#E1BEE7' }}>
-                        <Typography variant="caption" color="#6A1B9A" fontWeight={700}>MICRO-RELIEF TEXTURE</Typography>
-                        <Typography variant="h4" fontWeight={800} color="#6A1B9A">{aiResults.metrics.Texture}%</Typography>
-                        <Typography variant="caption" color="text.secondary">Pores & Roughness</Typography>
+                        <Typography variant="caption" color="#6A1B9A" fontWeight={700}>TEXTURE</Typography>
+                        <Typography variant="h5" fontWeight={800} color="#6A1B9A">{aiResults.metrics.Texture > 45 ? 'Uneven' : 'Smooth'}</Typography>
+                        <Typography variant="caption" color="text.secondary">{aiResults.metrics.Texture}% index</Typography>
                       </Paper>
 
                       <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', borderRadius: 2, bgcolor: '#F1FDF5', borderColor: '#C8E6C9' }}>
-                        <Typography variant="caption" color="#2E7D32" fontWeight={700}>HEALTH INDEX</Typography>
-                        <Typography variant="h4" fontWeight={800} color="#2E7D32">{aiResults.metrics.HealthScore}%</Typography>
-                        <Typography variant="caption" color="text.secondary">Overall Barrier Balance</Typography>
+                        <Typography variant="caption" color="#2E7D32" fontWeight={700}>BARRIER HEALTH</Typography>
+                        <Typography variant="h5" fontWeight={800} color="#2E7D32">{aiResults.metrics.HealthScore >= 70 ? 'Healthy' : 'Needs Care'}</Typography>
+                        <Typography variant="caption" color="text.secondary">{aiResults.metrics.HealthScore}% score</Typography>
                       </Paper>
                     </Box>
 
                     {/* Detected Clinical Concerns */}
                     <Box sx={{ bgcolor: '#FFFDE7', p: 2, borderRadius: 2, border: '1px solid #FFF59D', mb: 2 }}>
                       <Typography variant="caption" color="#F57F17" fontWeight={700} display="block" mb={0.5}>
-                        DETECTED CLINICAL CONCERNS:
+                        PRIMARY SKIN FOCUS:
                       </Typography>
                       <Box display="flex" flexWrap="wrap" gap={1}>
                         {aiResults.detectedConcerns.map((c, i) => (
@@ -445,21 +445,21 @@ function App() {
                       </Box>
                     </Box>
 
-                    {/* FOREO Recommendation Card (Week 6 Deliverable) */}
+                    {/* FOREO Recommendation Card */}
                     {recommendation && (
                       <RecommendationCard recommendation={recommendation} />
                     )}
 
-                    {/* Week 9 Deliverable 1: Edge Optimization & Hardware Latency Telemetry */}
-                    <EdgeOptimizationBadge telemetry={telemetry} />
-
-                    {/* Week 9 Deliverable 2: On-Device Micro-LLM Skincare Consultant (100% Offline) */}
+                    {/* On-Device Beauty-Tech AI Consultant */}
                     {recommendation && (
                       <MicroLlmConsultant 
                         aiResults={aiResults} 
                         recommendation={recommendation} 
                       />
                     )}
+
+                    {/* Week 9 Deliverable: Engineering Benchmarks (Discreet Evaluator Mode) */}
+                    <EdgeOptimizationBadge telemetry={telemetry} />
                   </Box>
                 )}
               </Paper>

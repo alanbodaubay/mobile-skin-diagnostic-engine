@@ -19,7 +19,7 @@ export default function MicroLlmConsultant({
   recommendation,
 }) {
   const [engineInfo, setEngineInfo] = useState({
-    type: 'Edge Micro-LLM Engine (Quantized INT8 Knowledge Kernel)',
+    type: 'On-Device Skincare AI Engine',
     available: true,
   });
   const [customMessages, setCustomMessages] = useState([]);
@@ -39,13 +39,11 @@ export default function MicroLlmConsultant({
   const devName = recommendation?.primaryDevice?.name || 'FOREO Device';
   const initialWelcome = {
     sender: 'ai',
-    text: `Hello! I am your **FOREO On-Device AI Skincare Consultant**. 
+    text: `Hello! I've reviewed your skin check-in. 
 
-I've analyzed your on-device scan (${aiResults?.skinType || 'Balanced'}, Health Score: **${aiResults?.metrics?.HealthScore || 85}%**). Based on your **${aiResults?.metrics?.Redness || 20}% Redness** and **${aiResults?.metrics?.Oiliness || 20}% Sebum** profile, we have prescribed the **${devName}** routine.
+Based on your scan, we tailored a routine centered around the **${devName}** to soothe redness, balance sebum, and keep your skin barrier healthy.
 
-You can ask me anything about your routine, active ingredient pairings, or device protocols—all computed 100% offline on your device!`,
-    latencyMs: 14,
-    engine: engineInfo.type,
+Ask me anything—like what to do if you don't have this device, whether you can pair it with Retinol, or how to wash with your hands instead!`,
   };
 
   const displayMessages = customMessages.length > 0 ? customMessages : [initialWelcome];
@@ -81,8 +79,6 @@ You can ask me anything about your routine, active ingredient pairings, or devic
         {
           sender: 'ai',
           text: response.answer,
-          latencyMs: response.latencyMs,
-          engine: response.engine,
         },
       ]);
     } catch (err) {
@@ -91,9 +87,7 @@ You can ask me anything about your routine, active ingredient pairings, or devic
         ...prev,
         {
           sender: 'ai',
-          text: `I encountered an on-device error: ${err.message}. Please try asking again.`,
-          latencyMs: 8,
-          engine: 'Local Fallback',
+          text: `I encountered a momentary issue. Please feel free to ask again!`,
         },
       ]);
     } finally {
@@ -102,33 +96,34 @@ You can ask me anything about your routine, active ingredient pairings, or devic
   };
 
   const quickPrompts = [
-    `Why is ${recommendation?.primaryDevice?.name || 'this device'} recommended for me?`,
-    'Can I combine Retinol or Vitamin C with my routine?',
-    'What should my morning vs. evening routine look like?',
-    'How long until I see visible improvements in redness?',
+    "What if I don't use this device?",
+    'Can I just wash with my hands?',
+    'Can I combine Retinol or Vitamin C?',
+    'Does it hurt or irritate sensitive skin?',
+    'How long until I see results?',
   ];
 
   if (!recommendation || !aiResults) return null;
 
   return (
     <Paper
-      elevation={3}
+      elevation={2}
       sx={{
         mt: 3.5,
         p: { xs: 2, sm: 3 },
         borderRadius: 3,
         bgcolor: '#FFFFFF',
-        border: '2px solid #E1BEE7',
-        boxShadow: '0 8px 32px rgba(156, 39, 176, 0.08)',
+        border: '1px solid #E1BEE7',
+        boxShadow: '0 4px 20px rgba(156, 39, 176, 0.06)',
       }}
     >
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5} mb={2}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5} mb={1.5}>
         <Box display="flex" alignItems="center" gap={1.5}>
           <Box
             sx={{
-              width: 40,
-              height: 40,
+              width: 38,
+              height: 38,
               borderRadius: '50%',
               bgcolor: '#9C27B0',
               display: 'flex',
@@ -136,43 +131,30 @@ You can ask me anything about your routine, active ingredient pairings, or devic
               justifyContent: 'center',
               color: '#FFF',
               fontWeight: 800,
-              fontSize: 20,
+              fontSize: 18,
             }}
           >
-            🤖
+            💬
           </Box>
           <Box>
             <Typography variant="h6" fontWeight={800} color="#1A1A2E" lineHeight={1.2}>
-              FOREO On-Device AI Consultant
+              FOREO Beauty Consultant
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Micro-LLM Explanation Layer • Week 9 Milestone
+              Personalized skincare guidance • {engineInfo.type}
             </Typography>
           </Box>
         </Box>
 
-        <Box display="flex" gap={1} flexWrap="wrap">
-          <Chip
-            label="🟢 100% On-Device (0 Cloud Calls)"
-            size="small"
-            sx={{ bgcolor: '#E8F5E9', color: '#2E7D32', fontWeight: 700, fontSize: '0.72rem' }}
-          />
-          <Chip
-            label={engineInfo.type.includes('Gemini') ? 'Gemini Nano' : 'INT8 Micro-LLM'}
-            size="small"
-            color="secondary"
-            variant="outlined"
-            sx={{ fontWeight: 600, fontSize: '0.72rem' }}
-          />
-        </Box>
+        <Chip
+          label="🔒 100% Private (On-Device)"
+          size="small"
+          sx={{ bgcolor: '#E8F5E9', color: '#2E7D32', fontWeight: 600, fontSize: '0.72rem' }}
+        />
       </Box>
 
-      <Typography variant="body2" color="text.secondary" mb={2}>
-        Consult directly with your personal beauty-tech AI. Ask about ingredient interactions, customized timelines, or device techniques.
-      </Typography>
-
       {/* Suggested Quick Prompt Chips */}
-      <Box display="flex" gap={1} flexWrap="wrap" mb={2.5}>
+      <Box display="flex" gap={1} flexWrap="wrap" mb={2}>
         {quickPrompts.map((prompt, i) => (
           <Chip
             key={i}
@@ -219,7 +201,7 @@ You can ask me anything about your routine, active ingredient pairings, or devic
               bgcolor: m.sender === 'user' ? '#1A1A2E' : '#F9F9FC',
               color: m.sender === 'user' ? '#FFF' : '#222',
               border: m.sender === 'user' ? 'none' : '1px solid #EAEAEA',
-              boxShadow: m.sender === 'user' ? '0 2px 8px rgba(26,26,46,0.15)' : 'none',
+              boxShadow: m.sender === 'user' ? '0 2px 8px rgba(26,26,46,0.1)' : 'none',
             }}
           >
             <Typography
@@ -232,25 +214,14 @@ You can ask me anything about your routine, active ingredient pairings, or devic
             >
               {m.text}
             </Typography>
-
-            {m.sender === 'ai' && m.latencyMs && (
-              <Box display="flex" justifyContent="space-between" alignItems="center" mt={1} pt={0.8} sx={{ borderTop: '1px dashed #DDD' }}>
-                <Typography variant="caption" color="text.secondary" fontSize="0.7rem">
-                  ⚡ Generated on-device in <strong>{m.latencyMs} ms</strong>
-                </Typography>
-                <Typography variant="caption" color="text.secondary" fontSize="0.7rem">
-                  {m.engine || 'Edge-AI'}
-                </Typography>
-              </Box>
-            )}
           </Box>
         ))}
 
         {isGenerating && (
-          <Box display="flex" alignItems="center" gap={1} p={1.5} sx={{ bgcolor: '#F5F5FA', borderRadius: 2, maxWidth: 220 }}>
+          <Box display="flex" alignItems="center" gap={1} p={1.5} sx={{ bgcolor: '#F5F5FA', borderRadius: 2, maxWidth: 200 }}>
             <CircularProgress size={16} color="secondary" />
             <Typography variant="caption" color="text.secondary" fontWeight={600}>
-              Reasoning on-device...
+              Thinking...
             </Typography>
           </Box>
         )}
@@ -260,7 +231,7 @@ You can ask me anything about your routine, active ingredient pairings, or devic
       {/* Input Box */}
       <Box display="flex" gap={1}>
         <TextField
-          placeholder="Ask a question about your routine or active ingredients..."
+          placeholder="Ask anything about your routine or products..."
           size="small"
           fullWidth
           value={inputValue}
@@ -281,7 +252,7 @@ You can ask me anything about your routine, active ingredient pairings, or devic
           onClick={() => handleSendMessage()}
           sx={{ px: 3, fontWeight: 700, borderRadius: 2, textTransform: 'none' }}
         >
-          Ask AI
+          Send
         </Button>
       </Box>
     </Paper>
